@@ -1,5 +1,6 @@
-import mysql from "mysql2";
-import dotenv from "dotenv";
+const mysql = require("mysql2");
+const dotenv = require("dotenv");
+
 dotenv.config();
 
 class Database {
@@ -41,4 +42,4 @@ class Database {
     }
 }
 
-export default Database;
+module.exports = Database;
