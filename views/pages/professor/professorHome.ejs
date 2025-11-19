@@ -1,0 +1,95 @@
+<%- include('../../partials/head') %>
+
+<body>
+    <%- include('../../partials/navbar') %>
+
+    <div class="container py-5">
+        <h1 class="mb-4 text-center">Painel do Professor</h1>
+
+        <!-- Seção de Turmas -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center bg-primary text-white">
+                <span><i class="fa fa-users me-2"></i>Minhas Turmas</span>
+                <button id="btnToggleTurmas" class="btn btn-light btn-sm">
+                    <i class="fa fa-eye"></i> Exibir minhas turmas
+                </button>
+            </div>
+            <div id="turmasContainer" class="card-body" style="display: none;">
+                <% if (turmas && turmas.length > 0) { %>
+                    <ul class="list-group">
+                        <% turmas.forEach(function(turma) { %>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>
+                                    <strong>Turma:</strong> <%= turma.nome_turma %>
+                                    <span class="ms-3"><strong>Disciplina:</strong> <%= turma.nome_disciplina %></span>
+                                </span>
+                            </li>
+                        <% }); %>
+                    </ul>
+                <% } else { %>
+                    <div class="alert alert-info mb-0">Nenhuma turma encontrada.</div>
+                <% } %>
+            </div>
+        </div>
+
+        <!-- Blocos de Navegação -->
+        <div class="row g-4 justify-content-center">
+            <div class="col-md-4">
+                <a href="/professor/atividades" class="text-decoration-none">
+                    <div class="card text-center shadow h-100 card-hover">
+                        <div class="card-body py-5">
+                            <i class="fa fa-tasks fa-3x text-primary mb-3"></i>
+                            <h4 class="card-title mb-2">Gerenciar Atividades</h4>
+                            <p class="card-text text-muted">Crie, edite e exclua atividades das suas turmas.</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a href="/professor/corrigir-atividades" class="text-decoration-none">
+                    <div class="card text-center shadow h-100 card-hover">
+                        <div class="card-body py-5">
+                            <i class="fa fa-edit fa-3x text-warning mb-3"></i>
+                            <h4 class="card-title mb-2">Corrigir Atividades</h4>
+                            <p class="card-text text-muted">Corrija e lance notas nas atividades entregues.</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a href="/professor/quadro-notas" class="text-decoration-none">
+                    <div class="card text-center shadow h-100 card-hover">
+                        <div class="card-body py-5">
+                            <i class="fa fa-clipboard-list fa-3x text-success mb-3"></i>
+                            <h4 class="card-title mb-2">Quadro de Notas</h4>
+                            <p class="card-text text-muted">Visualize o quadro de notas das suas turmas.</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <%- include('../../partials/footer') %>
+
+    <script>
+        document.getElementById('btnToggleTurmas').addEventListener('click', function () {
+            const turmasDiv = document.getElementById('turmasContainer');
+            if (turmasDiv.style.display === 'none') {
+                turmasDiv.style.display = 'block';
+                this.innerHTML = '<i class="fa fa-eye-slash"></i> Ocultar minhas turmas';
+            } else {
+                turmasDiv.style.display = 'none';
+                this.innerHTML = '<i class="fa fa-eye"></i> Exibir minhas turmas';
+            }
+        });
+    </script>
+    <style>
+        .card-hover:hover {
+            box-shadow: 0 0 0.5rem #007bff55;
+            transform: translateY(-2px) scale(1.02);
+            transition: all 0.2s;
+        }
+    </style>
+</body>
+</html>

@@ -1,0 +1,384 @@
+<%- include('../../partials/head') %>
+
+<body>
+    <%- include('../../partials/navbar') %>
+
+    <div class="container py-5">
+        <h1 class="mb-4 text-center">Minhas Atividades</h1>
+
+        <!-- Filtros -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0 text-white"><i class="fa fa-filter me-2"></i>Filtros</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label for="filtroStatus" class="form-label">Status</label>
+                        <select class="form-select" id="filtroStatus">
+                            <option value="">Todas</option>
+                            <option value="pendente">Pendentes</option>
+                            <option value="entregue">Entregues</option>
+                            <option value="atrasada">Atrasadas</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="filtroDisciplina" class="form-label">Disciplina</label>
+                        <select class="form-select" id="filtroDisciplina">
+                            <option value="">Todas as disciplinas</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <button class="btn btn-primary w-100" onclick="aplicarFiltros()">
+                            <i class="fa fa-search me-2"></i>Filtrar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estatísticas -->
+        <div class="row g-3 mb-4" id="estatisticas">
+            <div class="col-md-3">
+                <div class="card text-center bg-info text-white">
+                    <div class="card-body">
+                        <h3 id="statTotal">0</h3>
+                        <p class="mb-0">Total</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center bg-success text-white">
+                    <div class="card-body">
+                        <h3 id="statEntregues">0</h3>
+                        <p class="mb-0">Entregues</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center bg-warning text-dark">
+                    <div class="card-body">
+                        <h3 id="statPendentes">0</h3>
+                        <p class="mb-0">Pendentes</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center bg-danger text-white">
+                    <div class="card-body">
+                        <h3 id="statAtrasadas">0</h3>
+                        <p class="mb-0">Atrasadas</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lista de Atividades -->
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0 text-white"><i class="fa fa-list me-2"></i>Lista de Atividades</h5>
+            </div>
+            <div class="card-body">
+                <div id="listaAtividades">
+                    <div class="text-center text-muted py-5">
+                        <i class="fa fa-spinner fa-spin fa-3x"></i>
+                        <p class="mt-3">Carregando atividades...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Entrega -->
+    <div class="modal fade" id="modalEntregar" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="fa fa-upload me-2"></i>Entregar Atividade</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formEntregar" enctype="multipart/form-data">
+                        <input type="hidden" id="idAtividade">
+                        <input type="hidden" id="idEntrega">
+                        
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Título:</strong></label>
+                            <p id="tituloAtividade" class="form-control-plaintext"></p>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Disciplina:</strong></label>
+                            <p id="disciplinaAtividade" class="form-control-plaintext"></p>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Data de Entrega:</strong></label>
+                            <p id="dataEntregaAtividade" class="form-control-plaintext"></p>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Descrição:</strong></label>
+                            <p id="descricaoAtividade" class="form-control-plaintext text-muted"></p>
+                        </div>
+
+                        <hr>
+
+                        <div id="entregaAnterior" class="mb-3" style="display: none;">
+                            <div class="alert alert-info">
+                                <i class="fa fa-info-circle me-2"></i>
+                                <strong>Você já entregou esta atividade.</strong>
+                                <p class="mb-0">Enviado em: <span id="dataEnvioAnterior"></span></p>
+                                <p class="mb-0">Arquivo: <a href="#" id="linkArquivoAnterior" target="_blank">Baixar arquivo anterior</a></p>
+                                <p class="mb-1" id="notaAnterior" style="display: none;">
+                                    <strong>Nota:</strong> <span id="valorNota"></span>
+                                </p>
+                                <p class="mb-0" id="feedbackAnterior" style="display: none;">
+                                    <strong>Feedback:</strong> <span id="valorFeedback"></span>
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="arquivo" class="form-label"><strong>Arquivo:</strong> <span class="text-danger">*</span></label>
+                            <input type="file" class="form-control" id="arquivo" name="arquivo" required>
+                            <small class="text-muted">Formatos aceitos: PDF, DOC, DOCX, TXT, PNG, JPG, ZIP, RAR (máx. 10MB)</small>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="enviarAtividade()">
+                        <i class="fa fa-paper-plane me-2"></i>Enviar Atividade
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <%- include('../../partials/footer') %>
+
+    <script>
+        let todasAtividades = [];
+        let atividadesFiltradas = [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            carregarEstatisticas();
+            carregarAtividades();
+        });
+
+        async function carregarEstatisticas() {
+            try {
+                const response = await fetch('/api/aluno/atividades/estatisticas');
+                const data = await response.json();
+
+                if (data.sucesso && data.dados) {
+                    const stats = data.dados;
+                    document.getElementById('statTotal').textContent = stats.total_atividades || 0;
+                    document.getElementById('statEntregues').textContent = stats.total_entregues || 0;
+                    document.getElementById('statPendentes').textContent = stats.pendentes || 0;
+                    document.getElementById('statAtrasadas').textContent = stats.atrasadas || 0;
+                }
+            } catch (error) {
+                console.error('❌ Erro ao carregar estatísticas:', error);
+            }
+        }
+
+        async function carregarAtividades() {
+            const container = document.getElementById('listaAtividades');
+            container.innerHTML = '<div class="text-center py-3"><i class="fa fa-spinner fa-spin"></i> Carregando...</div>';
+
+            try {
+                const response = await fetch('/api/aluno/atividades/listar');
+                const data = await response.json();
+
+                if (data.sucesso && data.dados) {
+                    todasAtividades = data.dados;
+                    atividadesFiltradas = [...todasAtividades];
+                    
+                    // Preencher filtro de disciplinas
+                    preencherFiltroDisciplinas();
+                    
+                    // Renderizar atividades
+                    renderizarAtividades();
+                } else {
+                    container.innerHTML = '<div class="alert alert-info">Nenhuma atividade encontrada.</div>';
+                }
+            } catch (error) {
+                console.error('❌ Erro ao carregar atividades:', error);
+                container.innerHTML = '<div class="alert alert-danger">Erro ao carregar atividades.</div>';
+            }
+        }
+
+        function preencherFiltroDisciplinas() {
+            const select = document.getElementById('filtroDisciplina');
+            const disciplinas = [...new Set(todasAtividades.map(a => a.disciplina))];
+            
+            select.innerHTML = '<option value="">Todas as disciplinas</option>';
+            disciplinas.forEach(disc => {
+                select.innerHTML += `<option value="${disc}">${disc}</option>`;
+            });
+        }
+
+        function aplicarFiltros() {
+            const filtroStatus = document.getElementById('filtroStatus').value;
+            const filtroDisciplina = document.getElementById('filtroDisciplina').value;
+
+            atividadesFiltradas = todasAtividades.filter(atividade => {
+                const matchStatus = !filtroStatus || atividade.status === filtroStatus;
+                const matchDisciplina = !filtroDisciplina || atividade.disciplina === filtroDisciplina;
+                return matchStatus && matchDisciplina;
+            });
+
+            renderizarAtividades();
+        }
+
+        function renderizarAtividades() {
+            const container = document.getElementById('listaAtividades');
+
+            if (atividadesFiltradas.length === 0) {
+                container.innerHTML = '<div class="alert alert-info">Nenhuma atividade encontrada com os filtros selecionados.</div>';
+                return;
+            }
+
+            let html = '<div class="list-group">';
+            
+            atividadesFiltradas.forEach(atividade => {
+                const badgeClass = {
+                    'entregue': 'bg-success',
+                    'pendente': 'bg-warning text-dark',
+                    'atrasada': 'bg-danger'
+                }[atividade.status] || 'bg-secondary';
+
+                const badgeText = {
+                    'entregue': 'Entregue',
+                    'pendente': 'Pendente',
+                    'atrasada': 'Atrasada'
+                }[atividade.status] || 'Desconhecido';
+
+                const dataEntrega = new Date(atividade.data_entrega).toLocaleDateString('pt-BR');
+                const temNota = atividade.nota !== null;
+
+                html += `
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <h5 class="mb-1">${atividade.titulo}</h5>
+                                <p class="mb-1 text-muted">
+                                    <i class="fa fa-book me-1"></i>${atividade.disciplina} - 
+                                    <i class="fa fa-users me-1"></i>${atividade.turma} -
+                                    <i class="fa fa-calendar me-1"></i>Entrega: ${dataEntrega}
+                                </p>
+                                ${atividade.descricao ? `<p class="mb-1 small">${atividade.descricao}</p>` : ''}
+                                ${temNota ? `<p class="mb-0"><strong>Nota:</strong> <span class="badge bg-primary">${parseFloat(atividade.nota).toFixed(1)}</span></p>` : ''}
+                            </div>
+                            <div class="text-end ms-3">
+                                <span class="badge ${badgeClass} mb-2">${badgeText}</span><br>
+                                ${atividade.status !== 'entregue' || !temNota ? 
+                                    `<button class="btn btn-sm btn-primary" onclick="abrirModalEntrega(${atividade.id_atividade})">
+                                        <i class="fa fa-upload me-1"></i>${atividade.id_entrega ? 'Reenviar' : 'Entregar'}
+                                    </button>` : 
+                                    `<button class="btn btn-sm btn-info text-white" onclick="abrirModalEntrega(${atividade.id_atividade})">
+                                        <i class="fa fa-eye me-1"></i>Ver Detalhes
+                                    </button>`
+                                }
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        async function abrirModalEntrega(id_atividade) {
+            try {
+                const response = await fetch(`/api/aluno/atividades/atividade/${id_atividade}`);
+                const data = await response.json();
+
+                if (data.sucesso && data.dados) {
+                    const atividade = data.dados;
+                    
+                    document.getElementById('idAtividade').value = atividade.id_atividade;
+                    document.getElementById('idEntrega').value = atividade.id_entrega || '';
+                    document.getElementById('tituloAtividade').textContent = atividade.titulo;
+                    document.getElementById('disciplinaAtividade').textContent = atividade.disciplina;
+                    document.getElementById('dataEntregaAtividade').textContent = new Date(atividade.data_entrega).toLocaleString('pt-BR');
+                    document.getElementById('descricaoAtividade').textContent = atividade.descricao || 'Sem descrição';
+
+                    // Se já foi entregue, mostra informações
+                    if (atividade.id_entrega) {
+                        document.getElementById('entregaAnterior').style.display = 'block';
+                        document.getElementById('dataEnvioAnterior').textContent = new Date(atividade.data_envio).toLocaleString('pt-BR');
+                        document.getElementById('linkArquivoAnterior').href = `/uploads/${atividade.arquivo}`;
+                        
+                        if (atividade.nota !== null) {
+                            document.getElementById('notaAnterior').style.display = 'block';
+                            document.getElementById('valorNota').textContent = parseFloat(atividade.nota).toFixed(1);
+                        } else {
+                            document.getElementById('notaAnterior').style.display = 'none';
+                        }
+
+                        if (atividade.feedback) {
+                            document.getElementById('feedbackAnterior').style.display = 'block';
+                            document.getElementById('valorFeedback').textContent = atividade.feedback;
+                        } else {
+                            document.getElementById('feedbackAnterior').style.display = 'none';
+                        }
+                    } else {
+                        document.getElementById('entregaAnterior').style.display = 'none';
+                    }
+
+                    const modal = new bootstrap.Modal(document.getElementById('modalEntregar'));
+                    modal.show();
+                } else {
+                    alert('Erro ao carregar atividade: ' + data.erro);
+                }
+            } catch (error) {
+                console.error('❌ Erro ao abrir modal:', error);
+                alert('Erro ao carregar dados da atividade');
+            }
+        }
+
+        async function enviarAtividade() {
+            const id_atividade = document.getElementById('idAtividade').value;
+            const id_entrega = document.getElementById('idEntrega').value;
+            const arquivo = document.getElementById('arquivo').files[0];
+
+            if (!arquivo) {
+                alert('Por favor, selecione um arquivo!');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('id_atividade', id_atividade);
+            formData.append('id_entrega', id_entrega);
+            formData.append('arquivo', arquivo);
+
+            try {
+                const response = await fetch('/api/aluno/atividades/entregar', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.sucesso) {
+                    alert(data.mensagem);
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('modalEntregar'));
+                    modal.hide();
+                    document.getElementById('formEntregar').reset();
+                    carregarEstatisticas();
+                    carregarAtividades();
+                } else {
+                    alert('Erro: ' + data.erro);
+                }
+            } catch (error) {
+                console.error('❌ Erro ao enviar atividade:', error);
+                alert('Erro ao enviar atividade');
+            }
+        }
+    </script>
+</body>
+</html>

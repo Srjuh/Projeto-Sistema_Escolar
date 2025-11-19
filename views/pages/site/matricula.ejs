@@ -1,0 +1,210 @@
+    <!-- Head Start -->
+    <%- include('../../partials/head') %>
+
+<body>
+    <!-- Spinner Start -->
+    <%- include('../../partials/spinner') %>
+
+    <!-- Navbar Start -->
+    <%- include('../../partials/navbar') %>
+
+    <!-- Header Start -->
+    <div class="container-fluid bg-primary py-5 mb-5 page-header">
+        <div class="container py-5">
+            <div class="row justify-content-center">
+                <div class="col-lg-10 text-center">
+                    <h1 class="display-3 text-white animated slideInDown">Matrícula</h1>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb justify-content-center">
+                            <li class="breadcrumb-item"><a class="text-white" href="/">Home</a></li>
+                            <li class="breadcrumb-item text-white active" aria-current="page">Matrícula</li>
+                        </ol>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Header End -->
+
+    <!-- Matrícula Start -->
+    <div class="container-xxl py-5">
+        <div class="container d-flex justify-content-center">
+            <div class="row g-4 justify-content-center w-100">
+                <div class="col-lg-6 col-md-8 col-12 d-flex justify-content-center">
+                    <!-- Formulário -->
+                    <div class="Margem">
+                        <!-- Imagem de Sucesso -->
+                        <div id="imagemSucesso" style="display: none; margin-top: 20px;">
+                            <img src="/public/img/verificar.png" alt="Imagem de Sucesso" width="150">
+                        </div>
+                        <!-- Formulário de Cadastro -->
+                        <form id="formCadastro" onsubmit="validarForm(event)" action="#">
+                            <!-- Nome Completo -->
+                            <div class="mb-3">
+                                <label for="nome" class="form-label">Nome Completo <span style="color: red;">*</span></label>
+                                <div class="erro-nome"></div>
+                                <input type="text" class="form-control" id="nome" required placeholder="Digite seu nome completo" onblur="validac(this)" onkeypress="blockn(event)">
+                            </div>
+                            <!-- CPF -->
+                            <div class="mb-3">
+                                <label for="cpf" class="form-label">CPF <span style="color: red;">*</span></label>
+                                <div class="erro-cpf"></div>
+                                <input type="text" class="form-control" id="cpf" required placeholder="000.000.000-00" maxlength="14" onblur="validarCPF(event)" onkeypress="mascaracpf(event)">
+                            </div>
+                            <!-- Email -->
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email <span style="color: red;">*</span></label>
+                                <div class="erro-email"></div>
+                                <input type="email" class="form-control" id="email" required placeholder="Digite seu email" onblur="validaemail(event)">
+                            </div>
+                            <!-- Telefone -->
+                            <div class="mb-3">
+                                <label for="telefone" class="form-label">Telefone <span style="color: red;">*</span></label>
+                                <div class="erro"></div>
+                                <input type="tel" class="form-control" id="telefone" required placeholder="(00) 00000-0000" maxlength="15" onkeypress="validatel(event)" onblur="validatel(event)">
+                            </div>
+                            <!-- Data de Nascimento -->
+                            <div class="mb-3">
+                                <label for="dataNascimento" class="form-label">Data de Nascimento <span style="color: red;">*</span></label>
+                                <div class=".erro-data"></div>
+                                <input type="date" class="form-control" id="dataNascimento" required onblur="validad(this)">
+                            </div>
+                            <!-- Endereço -->
+                            <div class="mb-3">
+                                <label for="endereco" class="form-label">Endereço <span style="color: red;">*</span></label>
+                                <div class="erro-endereco"></div>
+                                <input type="text" class="form-control" id="endereco" required placeholder="Digite seu endereço" onblur="validaend(this)">
+                            </div>
+                            <!-- Cidade -->
+                            <div class="mb-3">
+                                <label for="cidade" class="form-label">Cidade <span style="color: red;">*</span></label>
+                                <div class="erro-cidade"></div>
+                                <input type="text" class="form-control" id="cidade" required placeholder="Digite sua cidade" onblur="validaci(this)" onkeypress="blockn(event)">
+                            </div>
+                            <!-- CEP -->
+                            <div class="mb-3">
+                                <label for="cep" class="form-label">CEP <span style="color: red;">*</span></label>
+                                <div class="erro-cep"></div>
+                                <input type="text" class="form-control" id="cep" required placeholder="Digite seu CEP" maxlength="9" onkeypress="validacep(event)" onblur="validacep(event)">
+                            </div>
+                            <!-- Sexo -->
+                            <div class="mb-3">
+                                <label for="sexo" class="form-label">Sexo <span style="color: red;">*</span></label>
+                                <div class="erro-sexo"></div>
+                                <select class="form-select" id="sexo" required onchange="validas(this)">
+                                    <option selected>Selecione</option>
+                                    <option>Masculino</option>
+                                    <option>Feminino</option>
+                                    <option>Prefiro não informar</option>
+                                </select>
+                            </div>
+                            <!-- Senha -->
+                            <div class="mb-3">
+                                <label for="senha" class="form-label">Senha <span style="color: red;">*</span></label>
+                                <div class="erro-sen"></div>
+                                <input type="password" class="form-control" id="senha" required placeholder="Digite sua senha" onblur="validarSenhas()">
+                            </div>
+                            <!-- Confirmar Senha -->
+                            <div class="mb-3">
+                                <label for="confirmarSenha" class="form-label">Confirmar Senha <span style="color: red;">*</span></label>
+                                <div class="erro-confs"></div>
+                                <input type="password" class="form-control" id="confirmarSenha" required placeholder="Confirme sua senha" onblur="validarSenhas()">
+                            </div>
+                            <!-- Termos -->
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="termos">
+                                <div class="erro-termos"></div>
+                                <label class="form-check-label" for="termos">Aceito os termos e condições</label>
+                            </div>
+                            <!-- Botão -->
+                            <button type="submit" class="btn btn-primary">Cadastrar</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+                                    
+    <!-- Footer Start -->
+    <%- include('../../partials/footer') %>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const form = document.getElementById('formCadastro');
+            const termos = document.getElementById('termos');
+            const senha = document.getElementById('senha');
+            const confirmarSenha = document.getElementById('confirmarSenha');
+            const cep = document.getElementById('cep');
+            const cpf = document.getElementById('cpf');
+            const telefone = document.getElementById('telefone');
+    
+            // --- Formatação de campos ---
+            cep.addEventListener('input', formatarCEP);
+            cpf.addEventListener('input', formatarCPF);
+            telefone.addEventListener('input', formatarTelefone);
+    
+            function formatarCEP(e) {
+                let value = e.target.value.replace(/\D/g, '');
+                value = value.replace(/(\d{5})(\d)/, '$1-$2');
+                e.target.value = value;
+            }
+    
+            function formatarCPF(e) {
+                let value = e.target.value.replace(/\D/g, '');
+                value = value.replace(/(\d{3})(\d)/, '$1.$2');
+                value = value.replace(/(\d{3})(\d)/, '$1.$2');
+                value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+                e.target.value = value;
+            }
+    
+            function formatarTelefone(e) {
+                let value = e.target.value.replace(/\D/g, '');
+                value = value.replace(/(\d{2})(\d)/, '($1) $2');
+                value = value.replace(/(\d{4,5})(\d{4})$/, '$1-$2');
+                e.target.value = value.substring(0, 15);
+            }
+    
+            // --- Validação do formulário ---
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+    
+                const camposObrigatorios = document.querySelectorAll('input[required], select[required]');
+                let camposInvalidos = 0;
+    
+                camposObrigatorios.forEach(campo => {
+                    if (!campo.value.trim()) {
+                        alert(`O campo ${campo.previousElementSibling.textContent.trim()} é obrigatório e precisa ser preenchido.`);
+                        camposInvalidos++;
+                    }
+                });
+    
+                if (camposInvalidos > 0) return;
+    
+                if (!termos.checked) {
+                    alert('Você deve aceitar os termos e condições para continuar.');
+                    return;
+                }
+    
+                if (senha.value !== confirmarSenha.value) {
+                    alert('As senhas não coincidem. Por favor, corrija antes de continuar.');
+                    return;
+                }
+    
+                // Exibir imagem de sucesso (opcional)
+                const imgSucesso = document.getElementById('imagemSucesso');
+                if (imgSucesso) {
+                    imgSucesso.style.display = 'block';
+                }
+    
+                // Redirecionar após um pequeno delay para mostrar a imagem
+                setTimeout(() => {
+                    window.location.href = "confirmacao.html";
+                }, 1000);
+            });
+        });
+    </script> 
+
+    <script src="public/js/verificar.js"></script>   
+
+</body>
+</html>

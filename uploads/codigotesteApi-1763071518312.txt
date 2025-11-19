@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Tester - BlackJack (FIPP 21)</title>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f9; }
+        .container { max-width: 1300px; margin: auto; }
+        h1, h2 { color: #333; border-bottom: 2px solid #ccc; padding-bottom: 5px; }
+        .section { margin-bottom: 30px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background-color: #fff; }
+        .endpoint-form { display: flex; flex-direction: column; gap: 10px; padding: 10px; border: 1px dashed #aaa; margin-top: 10px; }
+        .input-group label { display: block; margin-bottom: 3px; font-weight: bold; font-size: 0.9em; }
+        .input-group input, .input-group textarea, .input-group select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { padding: 8px 12px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; transition: background-color 0.3s; }
+        button:hover { background-color: #0056b3; }
+        .response-box { margin-top: 15px; padding: 10px; border: 1px solid #000; background-color: #e9e9e9; white-space: pre-wrap; word-wrap: break-word; font-family: monospace; font-size: 0.9em; max-height: 200px; overflow-y: auto;}
+        #jwt-display { margin-top: 10px; padding: 8px; background-color: #ffeeba; border: 1px solid #ffc107; border-radius: 4px; word-break: break-all; }
+        #ws-log { height: 250px; overflow-y: scroll; border: 1px solid #333; background-color: #222; color: #0f0; padding: 10px; margin-top: 10px; font-family: monospace; font-size: 0.85em; }
+        .flex-row { display: flex; flex-wrap: wrap; gap: 20px; }
+        .flex-col { flex: 1; min-width: 300px; }
+        .header-section { display: flex; justify-content: space-between; align-items: center;}
+
+        /* Estilos específicos para o display de cartas agrupado */
+        .player-hand-group {
+            border: 2px solid #3498db;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 15px;
+            background-color: #ecf0f1;
+        }
+        .cards-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>🎮 API Tester - BlackJack Game</h1>
+
+        <div class="section">
+            <div class="header-section">
+                <h2>🌍 Configuração & Status</h2>
+                <button onclick="connectWebSocket()" id="ws-connect-btn" style="background-color: green;">Conectar WebSocket</button>
+            </div>
+            
+            <div class="input-group" style="margin-bottom: 10px;">
+                <label for="api-base-url">URL Base da API (Ex: http://localhost:5000)</label>
+                <input type="text" id="api-base-url" value="http://localhost:5000">
+            </div>
+            <div class="input-group">
+                <label for="ws-url">URL do WebSocket (Ex: http://localhost:5000)</label>
+                <input type="text" id="ws-url" value="http://localhost:5000">
+            </div>
+            
+            <p style="margin-top: 15px;">
+                <strong>Status JWT:</strong> 
+                <span id="jwt-display">Nenhum JWT armazenado.</span>
+                <button onclick="clearJWT()" style="margin-left: 10px; background-color: #dc3545;">Limpar JWT</button>
+            </p>
+        </div>
+
+        <div class="section">
+            <h2>📡 Log do WebSocket</h2>
+            <div id="ws-log">Aguardando conexão. Lembre-se de enviar o evento 'entrarSala' abaixo para receber eventos específicos.</div>
+            <div class="endpoint-form">
+                <input type="number" id="ws-sala-id" placeholder="ID da Sala para entrar via WS" value="1">
+                <button onclick="joinSalaWS()">Entrar na Sala via WebSocket (Emitir 'entrarSala')</button>
+            </div>
+        </div>
+
+        <div class="flex-row">
+            <div class="section flex-col">
+                <h2>🔑 1. Usuário & Autenticação</h2>
+
+                <h3>POST /Usuarios/</h3>
+                <div class="endpoint-form">
+                    <input type="text" id="reg-nome" placeholder="Nome" value="Tester User">
+                    <input type="email" id="reg-email" placeholder="Email" value="tester@email.com">
+                    <input type="password" id="reg-senha" placeholder="Senha" value="123456">
+                    <button onclick="sendRequest('POST', '/Usuarios/', {nome: document.getElementById('reg-nome').value, email: document.getElementById('reg-email').value, senha: document.getElementById('reg-senha').value}, 'response-register')">
+                        Cadastrar Usuário
+                    </button>
+                    <div class="response-box" id="response-register"></div>
+                </div>
+
+                <h3>POST /Auth/</h3>
+                <div class="endpoint-form">
+                    <input type="email" id="login-email" placeholder="Email" value="tester@email.com">
+                    <input type="password" id="login-senha" placeholder="Senha" value="123456">
+                    <button onclick="loginAndSaveToken()">
+                        Login & Obter JWT
+                    </button>
+                    <div class="response-box" id="response-token"></div>
+                </div>
+            </div>
+
+            <div class="section flex-col">
+                <h2>🚪 2. Salas & Participantes</h2>
+                
+                <h3>GET /Salas/ (Protegido)</h3>
+                <button onclick="sendRequest('GET', '/Salas/', null, 'response-list-salas')" style="margin-top: 10px;">
+                    Listar Salas
+                </button>
+                <div class="response-box" id="response-list-salas"></div>
+
+                <h3>POST /Salas/ (Protegido)</h3>
+                <div class="endpoint-form">
+                    <input type="text" id="sala-nome" placeholder="Nome da Sala" value="Sala Teste 1">
+                    <button onclick="sendRequest('POST', '/Salas/', {nome: document.getElementById('sala-nome').value}, 'response-cadastrar-sala')">
+                        Cadastrar Sala
+                    </button>
+                    <div class="response-box" id="response-cadastrar-sala"></div>
+                </div>
+
+                <h3>POST /Participantes/ (Protegido)</h3>
+                <div class="endpoint-form">
+                    <input type="number" id="par-entrar-sala-id" placeholder="ID da Sala (entrar)" value="1">
+                    <button onclick="sendRequest('POST', '/Participantes/', {sala: parseInt(document.getElementById('par-entrar-sala-id').value)}, 'response-entrar-sala')">
+                        Inserir Usuário na Sala
+                    </button>
+                    <div class="response-box" id="response-entrar-sala"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex-row">
+            <div class="section flex-col">
+                <h2>🎲 3. Rotas de Jogo (Rodada & Aposta)</h2>
+
+                <h3>POST /Rodadas/ (Protegido)</h3>
+                <div class="endpoint-form">
+                    <input type="number" id="rodada-sala-id" placeholder="ID da Sala" value="1">
+                    <button onclick="sendRequest('POST', '/Rodadas/', {sala: parseInt(document.getElementById('rodada-sala-id').value)}, 'response-iniciar-rodada')">
+                        Iniciar Rodada
+                    </button>
+                    <div class="response-box" id="response-iniciar-rodada"></div>
+                </div>
+                
+                <h3>POST /Aposta/ (Protegido)</h3>
+                <div class="endpoint-form">
+                    <input type="number" id="aposta-sala-id" placeholder="ID da Sala" value="1">
+                    <input type="number" id="aposta-valor" placeholder="Valor da Aposta (Ex: 50)" value="50">
+                    <button onclick="sendRequest('POST', '/Aposta/', {sala: parseInt(document.getElementById('aposta-sala-id').value), valor: parseInt(document.getElementById('aposta-valor').value)}, 'response-realizar-aposta')">
+                        Realizar Aposta
+                    </button>
+                    <div class="response-box" id="response-realizar-aposta"></div>
+                </div>
+            </div>
+
+            <div class="section flex-col">
+                <h2>🃏 4. Rotas de Cartas</h2>
+                <p>O ID do baralho (Deck ID) é retornado ao iniciar a rodada.</p>
+
+                <h3>Cartas Recebidas (WebSocket)</h3>
+                <div style="display: flex; gap: 20px;">
+                    <div style="flex: 1;">
+                        <h4>Cartas de Jogadores (cartasIniciais)</h4>
+                        <div id="player-cards-display" style="min-height: 50px; border: 1px solid #ccc; padding: 10px; background-color: #f9f9f9;">Aguardando cartas...</div>
+                    </div>
+                    <div style="flex: 1;">
+                        <h4>Cartas do Dealer (cartas_dealer)</h4>
+                        <div id="dealer-cards-display" class="cards-container" style="min-height: 50px; border: 1px solid #ccc; padding: 10px; background-color: #f9f9f9; align-items: flex-start;">Aguardando cartas...</div>
+                    </div>
+                </div>
+                <button onclick="clearCardDisplay()" style="margin-top: 10px; background-color: #555;">Limpar Cartas</button>
+                <hr style="margin-top: 20px; border-style: dashed;">
+
+                <h3>POST /Cartas/Distribuir/Jogadores (Protegido)</h3>
+                <div class="endpoint-form">
+                    <input type="number" id="cartas-sala-id-todos" placeholder="ID da Sala" value="1">
+                    <input type="text" id="cartas-baralho-id-todos" placeholder="ID do Baralho (Deck ID)" value="novo_baralho_id">
+                    <button onclick="sendRequest('POST', '/Cartas/Distribuir/Jogadores', {salaId: parseInt(document.getElementById('cartas-sala-id-todos').value), baralho: document.getElementById('cartas-baralho-id-todos').value}, 'response-dist-todos')">
+                        Distribuir (Jogadores)
+                    </button>
+                    <div class="response-box" id="response-dist-todos"></div>
+                </div>
+
+                <h3>POST /Cartas/Distribuir/Dealer (Protegido)</h3>
+                <div class="endpoint-form">
+                    <input type="number" id="cartas-sala-id-dealer" placeholder="ID da Sala" value="1">
+                    <input type="text" id="cartas-baralho-id-dealer" placeholder="ID do Baralho (Deck ID)" value="novo_baralho_id">
+                    <button onclick="sendRequest('POST', '/Cartas/Distribuir/Dealer', {salaId: parseInt(document.getElementById('cartas-sala-id-dealer').value), baralho: document.getElementById('cartas-baralho-id-dealer').value}, 'response-dist-dealer')">
+                        Distribuir (Dealer)
+                    </button>
+                    <div class="response-box" id="response-dist-dealer"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>🔍 5. Rotas Secundárias (Participantes)</h2>
+             <div class="flex-row">
+                <div class="flex-col">
+                    <h3>POST /Participantes/lista (Protegido)</h3>
+                    <div class="endpoint-form">
+                        <input type="number" id="par-listar-sala-id" placeholder="ID da Sala (listar)" value="1">
+                        <button onclick="sendRequest('POST', '/Participantes/lista', {sala: parseInt(document.getElementById('par-listar-sala-id').value)}, 'response-listar-participantes')">
+                            Listar Participantes
+                        </button>
+                        <div class="response-box" id="response-listar-participantes"></div>
+                    </div>
+                </div>
+                <div class="flex-col">
+                    <h3>PUT /Participantes/ (Protegido)</h3>
+                    <div class="endpoint-form">
+                        <input type="number" id="par-sair-sala-id" placeholder="ID da Sala (sair)" value="1">
+                        <button onclick="sendRequest('PUT', '/Participantes/', {sala: parseInt(document.getElementById('par-sair-sala-id').value)}, 'response-sair-sala')" style="background-color: #ffc107; color: #000;">
+                            Remover Usuário da Sala (PUT)
+                        </button>
+                        <div class="response-box" id="response-sair-sala"></div>
+                    </div>
+                </div>
+             </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Variáveis globais
+        let jwtToken = localStorage.getItem('jwtToken') || null;
+        let ws; // Cliente Socket.IO
+
+        // --- Funções de Utilitário e JWT ---
+
+        function updateJwtDisplay() {
+            const display = document.getElementById('jwt-display');
+            if (jwtToken) {
+                display.textContent = jwtToken.substring(0, 40) + '... (Armazenado)';
+                display.style.backgroundColor = '#d4edda'; 
+                display.style.borderColor = '#c3e6cb';
+            } else {
+                display.textContent = 'Nenhum JWT armazenado.';
+                display.style.backgroundColor = '#ffeeba'; 
+                display.style.borderColor = '#ffc107';
+            }
+        }
+
+        function saveJWT(token) {
+            jwtToken = token;
+            localStorage.setItem('jwtToken', token);
+            updateJwtDisplay();
+        }
+
+        function clearJWT() {
+            jwtToken = null;
+            localStorage.removeItem('jwtToken');
+            updateJwtDisplay();
+        }
+
+        async function loginAndSaveToken() {
+            const email = document.getElementById('login-email').value;
+            const senha = document.getElementById('login-senha').value;
+            const body = { email, senha };
+            const responseDiv = document.getElementById('response-token');
+
+            try {
+                const apiBase = document.getElementById('api-base-url').value;
+                // ROTA CORRIGIDA: /Auth/
+                const url = `${apiBase}/Auth/`; 
+
+                responseDiv.textContent = "Enviando requisição...";
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                
+                let text = "";
+                let data = null;
+                try {
+                    text = await response.text();
+                    if (text) data = JSON.parse(text);
+                } catch (e) {
+                    data = { message: "Resposta não é JSON (veja o 'raw').", raw: text };
+                }
+
+                if (response.ok && data.token) {
+                    saveJWT(data.token);
+                    responseDiv.textContent = `Status: ${response.status}\nToken Salvo com Sucesso!`;
+                    responseDiv.style.color = 'green';
+                } else {
+                    responseDiv.textContent = `Status: ${response.status}\n${JSON.stringify(data, null, 2)}`;
+                    responseDiv.style.color = 'red';
+                }
+            } catch (error) {
+                responseDiv.textContent = `Erro de Conexão: ${error.message}`;
+                responseDiv.style.color = 'red';
+            }
+        }
+
+        // --- Funções de Requisição HTTP ---
+
+        async function sendRequest(method, path, body, responseDivId) {
+            const responseDiv = document.getElementById(responseDivId);
+            const apiBase = document.getElementById('api-base-url').value;
+            const url = `${apiBase}${path}`;
+            
+            responseDiv.textContent = "Enviando requisição...";
+            responseDiv.style.color = '#000';
+
+            // ROTAS CORRIGIDAS NA VERIFICAÇÃO
+            const isProtected = !['/Usuarios/', '/Auth/'].includes(path); 
+            
+            if (isProtected && !jwtToken) {
+                responseDiv.textContent = "ERRO: Rota protegida. Faça login primeiro para obter o JWT.";
+                responseDiv.style.color = 'red';
+                return;
+            }
+
+            const headers = {
+                'Content-Type': 'application/json',
+            };
+            if (isProtected) {
+                headers['Authorization'] = `Bearer ${jwtToken}`;
+            }
+
+            let text = ""; 
+
+            try {
+                const fetchOptions = {
+                    method: method, // Agora aceita 'POST', 'GET', 'PUT', etc.
+                    headers: headers,
+                };
+
+                if (body && (method === 'POST' || method === 'PUT')) {
+                    fetchOptions.body = JSON.stringify(body);
+                }
+
+                const response = await fetch(url, fetchOptions);
+                let data = null;
+
+                try {
+                    text = await response.text();
+                    if (text) {
+                        data = JSON.parse(text); 
+                    }
+                } catch (e) {
+                    data = { message: "Resposta não é JSON (veja o 'raw').", raw: text };
+                }
+
+                responseDiv.textContent = `Status: ${response.status} (${response.statusText})\n\n${JSON.stringify(data || {}, null, 2)}`;
+                responseDiv.style.color = response.ok ? 'green' : 'red';
+            
+            } catch (error) { 
+                responseDiv.textContent = `Erro de Conexão: ${error.message}`;
+                responseDiv.style.color = 'red';
+            }
+        }
+
+        // --- Funções de Visualização de Cartas ---
+
+        // Armazena as mãos de todos os jogadores para evitar que o display seja limpo
+        // Estrutura: { [par_id]: [card1, card2, ...] }
+        let allPlayerHands = {};
+        const DEALER_ID = 'DEALER';
+
+        function clearCardDisplay() {
+            document.getElementById('player-cards-display').innerHTML = 'Aguardando cartas...';
+            document.getElementById('dealer-cards-display').innerHTML = 'Aguardando cartas...';
+            allPlayerHands = {}; // Limpa o estado
+            logWS("Display de Cartas Limpo.", 'INFO');
+        }
+
+        /**
+         * Gera o HTML de um conjunto de cartas.
+         * @param {Array} cardsArray - Array de objetos de carta.
+         * @param {string} parId - O ID do participante (ou DEALER).
+         * @returns {string} O HTML das cartas.
+         */
+        function createCardsHtml(cardsArray) {
+            let cardsHtml = '';
+            cardsArray.forEach(card => {
+                if (!card || !card.image || !card.code) return; 
+
+                const value = card.value || card.code;
+                const suit = card.suit || '';
+                const altText = `${value} de ${suit}`;
+                
+                const textColor = suit.includes('DIAMONDS') || suit.includes('HEARTS') ? 'red' : 'black';
+
+                cardsHtml += `
+                    <div style="border: 1px solid #000; padding: 5px; background-color: white; border-radius: 3px; font-size: 0.8em; text-align: center; width: 60px; box-shadow: 2px 2px 5px rgba(0,0,0,0.2);">
+                        <img src="${card.image}" alt="${altText}" style="width: 100%; height: auto; display: block; margin: auto; border-radius: 2px;"><br>
+                        <span style="display: block; margin-top: 3px; font-weight: bold; color: ${textColor};">${value}</span>
+                    </div>
+                `;
+            });
+            return cardsHtml;
+        }
+
+
+        /**
+         * Renderiza as cartas, agrupando por participante, se for o display do jogador.
+         * @param {Object|Array} cards - A carta (objeto) ou cartas (array) recebidas.
+         * @param {string} targetId - O ID do elemento DIV onde as cartas serão exibidas.
+         * @param {number|string} [parId=null] - O ID do participante.
+         */
+        function renderCards(cards, targetId, parId = null) {
+            const cardsArray = Array.isArray(cards) ? cards : (cards ? [cards] : []);
+            
+            if (targetId === 'dealer-cards-display') {
+                const display = document.getElementById(targetId);
+                display.innerHTML = createCardsHtml(cardsArray); // Sempre substitui a mão do dealer
+                return;
+            }
+
+            // Lógica para Jogadores (targetId === 'player-cards-display')
+
+            if (cardsArray.length === 0 || parId === null) {
+                 // Nenhuma carta ou ID para processar
+                 return;
+            }
+
+            // 1. Atualiza o estado da mão do jogador
+            const playerId = `par-${parId}`;
+            
+            // Inicializa ou limpa a mão se estiver recebendo a mão inicial (2 cartas)
+            // Ou se o estado ainda não existe (primeira carta recebida).
+            if (!allPlayerHands[playerId] || cardsArray.length > 1) {
+                allPlayerHands[playerId] = cardsArray;
+            } else {
+                // Adiciona cartas (para hit/compra de carta única)
+                allPlayerHands[playerId] = allPlayerHands[playerId].concat(cardsArray);
+            }
+
+            // 2. Renderiza TODAS as mãos do estado para o display
+            const display = document.getElementById('player-cards-display');
+            display.innerHTML = ''; // Limpa o display para reconstruir
+            
+            let allHandsHtml = '';
+            
+            // Verifica se o display ainda está com o texto inicial e o substitui
+            if (Object.keys(allPlayerHands).length === 0) {
+                 display.innerHTML = 'Aguardando cartas...';
+            }
+
+
+            for (const id in allPlayerHands) {
+                const currentParId = id.replace('par-', '');
+                const cardsInHand = allPlayerHands[id];
+
+                allHandsHtml += `
+                    <div class="player-hand-group">
+                        <p style="font-weight: bold; margin-bottom: 5px; margin-top: 0; color: #2c3e50;">
+                            Jogador (Par ID: ${currentParId})
+                        </p>
+                        <div class="cards-container">
+                            ${createCardsHtml(cardsInHand)}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            display.innerHTML = allHandsHtml;
+        }
+
+
+        // --- Funções de WebSocket (Socket.IO) ---
+
+        function logWS(message, type = 'INFO') {
+            const logBox = document.getElementById('ws-log');
+            const now = new Date().toLocaleTimeString();
+            let color = 'inherit';
+            switch(type) {
+                case 'ERROR': color = '#ff4d4d'; break;
+                case 'EVENT': color = '#4da6ff'; break;
+                case 'SUCCESS': color = '#00cc00'; break;
+                case 'WARN': color = '#ffc107'; break;
+            }
+            logBox.innerHTML += `<span style="color: ${color};">[${now} - ${type}]</span> ${message}\n`;
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+
+        function connectWebSocket() {
+            const wsUrl = document.getElementById('ws-url').value;
+            const connectBtn = document.getElementById('ws-connect-btn');
+            
+            if (ws && ws.connected) {
+                ws.disconnect();
+                logWS("Desconectando socket anterior...", 'WARN');
+            }
+            
+            logWS(`Tentando conectar a ${wsUrl} (via Socket.IO)...`);
+            connectBtn.style.backgroundColor = 'orange';
+            connectBtn.textContent = 'Conectando...';
+
+            ws = io(wsUrl, { transports: ['websocket'] }); 
+
+            ws.on("connect", () => {
+                logWS("Conectado com sucesso via Socket.IO!", 'SUCCESS');
+                connectBtn.style.backgroundColor = 'green';
+                connectBtn.textContent = 'Conectado (clique para reconectar)';
+            });
+
+            ws.on("disconnect", () => {
+                logWS("Conexão fechada. (Tente reconectar)", 'WARN');
+                connectBtn.style.backgroundColor = '#dc3545';
+                connectBtn.textContent = 'Desconectado (clique para conectar)';
+            });
+
+            ws.on("connect_error", (error) => {
+                logWS(`ERRO DE CONEXÃO: ${error.message || 'Verifique a URL, o CORS e o servidor'}`, 'ERROR');
+                connectBtn.style.backgroundColor = '#dc3545';
+                connectBtn.textContent = 'Erro (clique para tentar novamente)';
+            });
+
+            // --- Eventos de Jogo ---
+            ws.on("mensagem", (data) => {
+                logWS(`[mensagem]: ${data}`, 'EVENT');
+            });
+            ws.on("ID", (data) => {
+                logWS(`[ID]: Meu Socket ID é: ${data}`, 'EVENT');
+            });
+            ws.on("Atualizar_Salas", (data) => {
+                logWS(`[Atualizar_Salas]: ${JSON.stringify(data)}`, 'EVENT');
+            });
+            ws.on("Novo_Usuario", (data) => {
+                logWS(`[Novo_Usuario]: ${data}`, 'EVENT');
+            });
+            ws.on("Usuario_saiu", (data) => {
+                logWS(`[Usuario_saiu]: ${data}`, 'EVENT');
+            });
+            ws.on("Iniciar_Rodada", (data) => {
+                // Ao iniciar uma rodada, limpa o display de cartas antigo
+                clearCardDisplay(); 
+                logWS(`[Iniciar_Rodada]: ${data}`, 'EVENT');
+            });
+            ws.on("Todos_apostaram", (data) => {
+                logWS(`[Todos_apostaram]: ${data}`, 'EVENT');
+            });
+            ws.on("Falta_apostar", (data) => {
+                logWS(`[Falta_apostar]: ${data}`, 'EVENT');
+            });
+            ws.on("Erro_apostar", (data) => {
+                logWS(`[Erro_apostar]: ${data}`, 'ERROR');
+            });
+            
+            // Handler para cartasIniciais
+            ws.on("cartasIniciais", (cartas, par_id) => {
+                logWS(`[cartasIniciais] (P/ ID ${par_id}): ${JSON.stringify(cartas)}`, 'EVENT');
+                // Usa renderCards, que agora agrupa as cartas pelo par_id
+                renderCards(cartas, 'player-cards-display', par_id);
+            });
+
+            // Handler para cartas_dealer
+            ws.on("cartas_dealer", (cartas) => {
+                logWS(`[cartas_dealer]: ${JSON.stringify(cartas)}`, 'EVENT');
+                // Substitui a mão do dealer
+                renderCards(cartas, 'dealer-cards-display', DEALER_ID);
+            });
+        }
+
+        function joinSalaWS() {
+            const salaId = document.getElementById('ws-sala-id').value;
+            if (!ws || !ws.connected) {
+                logWS("Socket.IO não está conectado. Conecte primeiro.", 'ERROR');
+                return;
+            }
+            if (!salaId) {
+                logWS("Insira o ID da Sala.", 'ERROR');
+                return;
+            }
+            
+            ws.emit("entrarSala", parseInt(salaId)); 
+            logWS(`[EMITIDO] Evento 'entrarSala' para ID: ${salaId}`, 'INFO');
+        }
+
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', () => {
+            updateJwtDisplay();
+            connectWebSocket(); // Tenta conectar o WS ao carregar a página
+        });
+    </script>
+
+</body>
+</html>
