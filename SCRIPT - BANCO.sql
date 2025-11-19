@@ -6,8 +6,8 @@
 -- CRIAÇÃO DO BANCO
 -- ==========================================================
 
-CREATE DATABASE sistema_academico;
-USE sistema_academico;
+CREATE DATABASE railway;
+USE railway;
 
 -- ==========================================================
 -- TABELAS BÁSICAS
@@ -198,3 +198,88 @@ CREATE TABLE baixa_material (
     FOREIGN KEY (id_material) REFERENCES material(id_material),
     FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario)
 );
+
+-- ===========================
+-- POPULAÇÃO DE DADOS BÁSICOS
+-- ===========================
+
+INSERT INTO usuario (id_usuario, nome, email, senha)
+VALUES
+(1, 'Carlos Mendes', 'carlos@escola.com', '123'),
+(2, 'Ana Ribeiro', 'ana@escola.com', '123'),
+(3, 'Roberto Dias', 'roberto@escola.com', '123'),
+(4, 'João Silva', 'joao@escola.com', '123'),
+(5, 'Maria Souza', 'maria@escola.com', '123'),
+(6, 'Pedro Santos', 'pedro@escola.com', '123');
+
+INSERT INTO professor (id_professor)
+VALUES
+(1), -- Carlos
+(2), -- Ana
+(3); -- Roberto
+
+INSERT INTO aluno (id_aluno, matricula)
+VALUES
+(4, 'A001'),
+(5, 'A002'),
+(6, 'A003');
+
+INSERT INTO ano_letivo (id_ano, ano, ativo)
+VALUES
+(1, 2025, TRUE),
+(2, 2026, FALSE);
+
+INSERT INTO serie (id_serie, nome)
+VALUES
+(1, '7º Ano'),
+(2, '8º Ano');
+
+INSERT INTO sala (id_sala, nome, capacidade)
+VALUES
+(1, 'Sala 101', 35),
+(2, 'Sala 102', 35),
+(3, 'Sala 201', 40);
+
+INSERT INTO disciplina (id_disciplina, nome)
+VALUES
+(1, 'Matemática'),
+(2, 'Português'),
+(3, 'História');
+
+INSERT INTO turma (id_turma, nome, id_serie, id_sala, id_ano)
+VALUES
+(1, '7A', 1, 1, 1),
+(2, '8A', 2, 3, 1);
+
+INSERT INTO turma_professor (id_turma, id_professor, id_disciplina)
+VALUES
+(1, 1, 1), -- Carlos → Mat → 7A
+(1, 2, 2), -- Ana → Port → 7A
+(1, 3, 3), -- Roberto → Hist → 7A
+(2, 1, 1), -- Carlos → Mat → 8A
+(2, 2, 2); -- Ana → Port → 8A
+
+INSERT INTO matricula (id_matricula, id_aluno, id_turma, data_matricula)
+VALUES
+(1, 4, 1, '2025-02-01'),
+(2, 5, 1, '2025-02-01'),
+(3, 6, 2, '2025-02-01');
+
+INSERT INTO atividade (id_atividade, titulo, descricao, data_entrega, id_turma, id_disciplina)
+VALUES
+(1, 'Lista de Frações', 'Resolver 15 exercícios', '2025-03-01', 1, 1),
+(2, 'Interpretação de Texto', 'Responder 10 questões', '2025-03-05', 1, 2),
+(3, 'Resumo Idade Média', 'Resumo de 20 linhas', '2025-03-10', 1, 3);
+
+INSERT INTO atividade_entrega (id_entrega, id_atividade, id_aluno, data_envio, arquivo, nota, feedback)
+VALUES
+(1, 1, 4, '2025-03-01 14:00:00', 'arquivo1.pdf', 8.5, 'Bom trabalho'),
+(2, 1, 5, '2025-03-01 15:20:00', 'arquivo2.pdf', 9.0, 'Excelente');
+
+INSERT INTO quadro_notas (id_quadro, id_turma, id_disciplina, criterio, peso)
+VALUES
+(1, 1, 1, 'Prova 1', 3.0),
+(2, 1, 1, 'Trabalhos', 2.0),
+(3, 1, 2, 'Redação', 4.0);
+
+
