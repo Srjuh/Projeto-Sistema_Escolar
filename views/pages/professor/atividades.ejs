@@ -1,0 +1,327 @@
+<%- include('../../partials/head') %>
+
+<body>
+    <%- include('../../partials/navbar') %>
+
+    <div class="container py-5">
+        <h1 class="mb-4 text-center">Atividades</h1>
+
+        <!-- Botão para adicionar nova atividade -->
+        <div class="d-flex justify-content-end mb-4">
+            <button class="btn btn-primary" id="btnNovaAtividade">
+                <i class="fa fa-plus me-2"></i>Nova Atividade
+            </button>
+        </div>
+
+        <!-- Lista de atividades -->
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0 text-white">Minhas Atividades</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Título</th>
+                            <th>Turma</th>
+                            <th>Disciplina</th>
+                            <th>Data de Entrega</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaAtividades">
+                        <!-- JS irá popular -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para criar/editar atividade -->
+    <div class="modal fade" id="modalAtividade" tabindex="-1" aria-labelledby="modalAtividadeLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title text-white" id="modalAtividadeLabel">Nova Atividade</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formAtividade">
+                        <div class="mb-3">
+                            <label for="titulo" class="form-label">Título</label>
+                            <input type="text" class="form-control" id="titulo" name="titulo" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="turma" class="form-label">Turma</label>
+                            <select class="form-select" id="turma" name="turma" required>
+                                <!-- JS irá popular -->
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="disciplina" class="form-label">Disciplina</label>
+                            <select class="form-select" id="disciplina" name="disciplina" required>
+                                <!-- JS irá popular -->
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="dataEntrega" class="form-label">Data de Entrega</label>
+                            <input type="date" class="form-control" id="dataEntrega" name="dataEntrega" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btnSalvarAtividade">Salvar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <%- include('../../partials/footer') %>
+
+    <script>
+        let atividadeEditandoId = null; // Guarda o ID da atividade sendo editada
+        let todasTurmasDisciplinas = []; // Armazena os dados completos
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await carregarTurmasEDisciplinas();
+            carregarAtividades();
+
+            document.getElementById('btnNovaAtividade').addEventListener('click', () => {
+                abrirModalAtividade();
+            });
+
+            document.getElementById('btnSalvarAtividade').addEventListener('click', salvarAtividade);
+        });
+
+        async function carregarAtividades() {
+            try {
+                const response = await fetch('/api/atividades');
+                const data = await response.json();
+                const tabela = document.getElementById('tabelaAtividades');
+                tabela.innerHTML = '';
+
+                if (data.sucesso && data.dados.length > 0) {
+                    data.dados.forEach(atividade => {
+                        tabela.innerHTML += `
+                            <tr>
+                                <td>${atividade.titulo}</td>
+                                <td>${atividade.nome_turma}</td>
+                                <td>${atividade.nome_disciplina}</td>
+                                <td>${new Date(atividade.data_entrega).toLocaleDateString('pt-BR')}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-warning" onclick="editarAtividade(${atividade.id_atividade})">Editar</button>
+                                    <button class="btn btn-sm btn-danger" onclick="excluirAtividade(${atividade.id_atividade})">Excluir</button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                } else {
+                    tabela.innerHTML = '<tr><td colspan="5" class="text-center">Nenhuma atividade encontrada</td></tr>';
+                }
+            } catch (error) {
+                console.error('Erro ao carregar atividades:', error);
+            }
+        }
+
+        async function carregarTurmasEDisciplinas() {
+            try {
+                console.log('🔄 Carregando turmas e disciplinas...');
+                
+                const resposta = await fetch('/api/atividades/turmas-disciplinas');
+                const data = await resposta.json();
+
+                console.log('📦 Resposta completa da API:', data);
+
+                if (data.sucesso && data.turmas && data.turmas.length > 0) {
+                    // Armazena os dados completos globalmente
+                    todasTurmasDisciplinas = data.turmas;
+                    
+                    console.log('📚 Total de registros recebidos:', data.turmas.length);
+                    console.log('📝 Primeiros 3 registros:', data.turmas.slice(0, 3));
+
+                    // Popula apenas as turmas inicialmente
+                    popularTurmas();
+                } else {
+                    console.warn('⚠️ Nenhuma turma/disciplina retornada ou erro:', data);
+                    document.getElementById('turma').innerHTML = '<option disabled>Nenhuma turma encontrada</option>';
+                    document.getElementById('disciplina').innerHTML = '<option disabled>Nenhuma disciplina encontrada</option>';
+                }
+            } catch (error) {
+                console.error('❌ Erro ao carregar turmas e disciplinas:', error);
+            }
+        }
+
+        function popularTurmas() {
+            const turmaSelect = document.getElementById('turma');
+            turmaSelect.innerHTML = '';
+
+            // Extrair turmas únicas
+            const turmasMap = new Map();
+            todasTurmasDisciplinas.forEach(item => {
+                if (!turmasMap.has(item.id_turma)) {
+                    turmasMap.set(item.id_turma, {
+                        id_turma: item.id_turma,
+                        nome_turma: item.nome_turma
+                    });
+                }
+            });
+
+            const turmasUnicas = Array.from(turmasMap.values());
+            console.log('🎯 Turmas únicas extraídas:', turmasUnicas);
+
+            turmasUnicas.forEach(turma => {
+                turmaSelect.innerHTML += `<option value="${turma.id_turma}">${turma.nome_turma}</option>`;
+            });
+
+            // Popula disciplinas da primeira turma automaticamente
+            if (turmasUnicas.length > 0) {
+                popularDisciplinasPorTurma(turmasUnicas[0].id_turma);
+            }
+        }
+
+        function popularDisciplinasPorTurma(id_turma) {
+            const disciplinaSelect = document.getElementById('disciplina');
+            disciplinaSelect.innerHTML = '';
+
+            console.log('🔍 Filtrando disciplinas para turma:', id_turma);
+
+            // Filtra disciplinas da turma selecionada
+            const disciplinasDaTurma = todasTurmasDisciplinas
+                .filter(item => item.id_turma == id_turma)
+                .map(item => ({
+                    id_disciplina: item.id_disciplina,
+                    nome_disciplina: item.nome_disciplina
+                }));
+
+            // Remove duplicatas
+            const disciplinasUnicas = disciplinasDaTurma.filter((disc, index, self) =>
+                index === self.findIndex(d => d.id_disciplina === disc.id_disciplina)
+            );
+
+            console.log('🎯 Disciplinas da turma:', disciplinasUnicas);
+
+            if (disciplinasUnicas.length > 0) {
+                disciplinasUnicas.forEach(disciplina => {
+                    disciplinaSelect.innerHTML += `<option value="${disciplina.id_disciplina}">${disciplina.nome_disciplina}</option>`;
+                });
+            } else {
+                disciplinaSelect.innerHTML = '<option disabled>Nenhuma disciplina disponível</option>';
+            }
+        }
+
+        // Event listener para quando mudar a turma
+        document.addEventListener('DOMContentLoaded', function() {
+            carregarTurmasEDisciplinas();
+            carregarAtividades();
+
+            // Quando mudar a turma, atualiza as disciplinas
+            document.getElementById('turma').addEventListener('change', function() {
+                const id_turma = this.value;
+                console.log('🔄 Turma alterada para:', id_turma);
+                popularDisciplinasPorTurma(id_turma);
+            });
+        });
+
+        function abrirModalAtividade() {
+            atividadeEditandoId = null; // Reset: modo criação
+            document.getElementById('formAtividade').reset();
+            document.getElementById('modalAtividadeLabel').textContent = 'Nova Atividade';
+            const modal = new bootstrap.Modal(document.getElementById('modalAtividade'));
+            modal.show();
+        }
+
+        async function salvarAtividade() {
+            const titulo = document.getElementById('titulo').value;
+            const turma = document.getElementById('turma').value;
+            const disciplina = document.getElementById('disciplina').value;
+            const dataEntrega = document.getElementById('dataEntrega').value;
+
+            const body = {
+                titulo,
+                descricao: '',
+                id_turma: turma,
+                id_disciplina: disciplina,
+                data_entrega: dataEntrega
+            };
+
+            try {
+                let response;
+                if (atividadeEditandoId) {
+                    // Modo edição
+                    response = await fetch(`/api/atividades/${atividadeEditandoId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body)
+                    });
+                } else {
+                    // Modo criação
+                    response = await fetch('/api/atividades', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body)
+                    });
+                }
+
+                const data = await response.json();
+
+                if (data.sucesso) {
+                    alert(atividadeEditandoId ? 'Atividade atualizada com sucesso!' : 'Atividade criada com sucesso!');
+                    carregarAtividades();
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('modalAtividade'));
+                    modal.hide();
+                } else {
+                    alert('Erro: ' + data.erro);
+                }
+            } catch (error) {
+                console.error('Erro ao salvar atividade:', error);
+            }
+        }
+
+        async function editarAtividade(id) {
+            try {
+                const response = await fetch(`/api/atividades/${id}`);
+                const data = await response.json();
+
+                if (data.sucesso) {
+                    const atividade = data.dados;
+
+                    await carregarTurmasEDisciplinas();
+
+                    atividadeEditandoId = id; // Marca como modo edição
+                    document.getElementById('titulo').value = atividade.titulo;
+                    document.getElementById('turma').value = atividade.id_turma;
+                    document.getElementById('disciplina').value = atividade.id_disciplina;
+                    document.getElementById('dataEntrega').value = atividade.data_entrega.split('T')[0];
+                    document.getElementById('modalAtividadeLabel').textContent = 'Editar Atividade';
+
+                    const modal = new bootstrap.Modal(document.getElementById('modalAtividade'));
+                    modal.show();
+                } else {
+                    alert('Erro ao carregar atividade: ' + data.erro);
+                }
+            } catch (error) {
+                console.error('Erro ao carregar atividade:', error);
+            }
+        }
+
+        async function excluirAtividade(id) {
+            if (confirm('Tem certeza que deseja excluir esta atividade?')) {
+                try {
+                    const response = await fetch(`/api/atividades/${id}`, { method: 'DELETE' });
+                    const data = await response.json();
+
+                    if (data.sucesso) {
+                        alert('Atividade excluída com sucesso!');
+                        carregarAtividades();
+                    } else {
+                        alert('Erro ao excluir: ' + data.erro);
+                    }
+                } catch (error) {
+                    console.error('Erro ao excluir atividade:', error);
+                }
+            }
+        }
+    </script>
+</body>
+</html>

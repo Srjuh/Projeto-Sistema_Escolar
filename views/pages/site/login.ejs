@@ -1,0 +1,110 @@
+<!-- Head Start -->
+    <%- include('../../partials/head') %>
+
+<body>
+    <!-- Spinner Start -->
+    <%- include('../../partials/spinner') %>
+
+    <!-- Navbar Start -->
+    <%- include('../../partials/navbar') %>
+
+    <!-- Header Start -->
+    <div class="container-fluid bg-primary py-5 mb-5 page-header">
+        <div class="container py-5">
+            <div class="row justify-content-center">
+                <div class="col-lg-10 text-center">
+                    <h1 class="display-3 text-white animated slideInDown">Login</h1>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb justify-content-center">
+                            <li class="breadcrumb-item"><a class="text-white" href="/">Home</a></li>
+                            <li class="breadcrumb-item text-white active" aria-current="page">Login</li>
+                        </ol>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Header End -->
+
+    <!-- Login Form Start -->
+    <div class="container-xxl py-5">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-6">
+                    <div class="card shadow-lg">
+                        <div class="card-body p-5">
+                            <h2 class="text-center mb-4">Entrar na Plataforma</h2>
+                            <div id="erroLogin" class="alert alert-danger d-none" role="alert"></div>
+                            <form id="loginForm">
+                                <div class="mb-3">
+                                    <label for="email" class="form-label">Email</label>
+                                    <input type="email" class="form-control" id="email" name="email" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="senha" class="form-label">Senha</label>
+                                    <input type="password" class="form-control" id="senha" name="senha" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-100 mb-3">
+                                    <i class="fa fa-sign-in-alt me-2"></i>Entrar
+                                </button>
+                            </form>
+                            <hr>
+                            <p class="text-center">
+                                Não tem uma conta? 
+                                <a class="text-primary">Solicite seu cadastro</a>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Login Form End -->
+
+    <!-- Footer Start -->
+    <%- include('../../partials/footer') %>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async function (event) {
+            event.preventDefault();
+            const email = document.getElementById('email').value.trim();
+            const senha = document.getElementById('senha').value.trim();
+            const erroDiv = document.getElementById('erroLogin');
+            erroDiv.classList.add('d-none');
+            erroDiv.textContent = '';
+
+            try {
+                const response = await fetch('/api/usuarios/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, senha })
+                });
+                const data = await response.json();
+
+                if (data.sucesso && data.usuario) {
+                    localStorage.setItem('usuario', JSON.stringify(data.usuario));
+                    
+                    // Redireciona baseado no tipo de usuário
+                    if (data.usuario.tipo === 'professor' || data.usuario.id_professor) {
+                        window.location.href = '/professor';
+                    } else if (data.usuario.tipo === 'aluno' || data.usuario.id_aluno) {
+                        window.location.href = '/aluno';
+                    } else if (data.usuario.tipo === 'administrador') {
+                        window.location.href = '/admin';
+                    } else {
+                        erroDiv.textContent = 'Tipo de usuário não reconhecido.';
+                        erroDiv.classList.remove('d-none');
+                    }
+                } else {
+                    erroDiv.textContent = data.erro || 'Usuário ou senha inválidos';
+                    erroDiv.classList.remove('d-none');
+                }
+            } catch (error) {
+                console.error('Erro no login:', error);
+                erroDiv.textContent = 'Erro ao conectar ao servidor.';
+                erroDiv.classList.remove('d-none');
+            }
+        });
+    </script>
+</body>
+</html>

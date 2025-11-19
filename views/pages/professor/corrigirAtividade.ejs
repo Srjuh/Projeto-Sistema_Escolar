@@ -1,0 +1,344 @@
+<%- include('../../partials/head') %>
+
+<body>
+    <%- include('../../partials/navbar') %>
+
+    <div class="container py-5">
+        <h1 class="mb-4 text-center">Corrigir Atividades</h1>
+
+        <!-- Lista de Atividades -->
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0 text-white"><i class="fa fa-list me-2"></i>Atividades com Entregas</h5>
+            </div>
+            <div class="card-body">
+                <% if (atividades && atividades.length > 0) { %>
+                    <div class="list-group">
+                        <% atividades.forEach(atividade => { %>
+                            <a href="#" class="list-group-item list-group-item-action" 
+                               onclick="carregarEntregas(<%= atividade.id_atividade %>, '<%= atividade.titulo %>'); return false;">
+                                <div class="d-flex w-100 justify-content-between align-items-center">
+                                    <div>
+                                        <h5 class="mb-1"><%= atividade.titulo %></h5>
+                                        <p class="mb-1 text-muted">
+                                            <i class="fa fa-book me-1"></i><%= atividade.disciplina %> - 
+                                            <i class="fa fa-users me-1"></i><%= atividade.turma %> -
+                                            <i class="fa fa-calendar me-1"></i>Entrega: <%= new Date(atividade.data_entrega).toLocaleDateString('pt-BR') %>
+                                        </p>
+                                    </div>
+                                    <div class="text-end">
+                                        <span class="badge bg-info"><%= atividade.total_entregas %> entregas</span>
+                                        <% if (atividade.pendentes_correcao > 0) { %>
+                                            <span class="badge bg-warning text-dark"><%= atividade.pendentes_correcao %> pendentes</span>
+                                        <% } else { %>
+                                            <span class="badge bg-success">Todas corrigidas</span>
+                                        <% } %>
+                                    </div>
+                                </div>
+                            </a>
+                        <% }); %>
+                    </div>
+                <% } else { %>
+                    <div class="alert alert-info mb-0">
+                        <i class="fa fa-info-circle me-2"></i>Nenhuma atividade com entregas encontrada.
+                    </div>
+                <% } %>
+            </div>
+        </div>
+
+        <!-- Área de Entregas -->
+        <div class="card mt-4" id="areaEntregas" style="display: none;">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 text-white"><i class="fa fa-file-alt me-2"></i>Entregas: <span id="tituloAtividade"></span></h5>
+                <button class="btn btn-light btn-sm" onclick="fecharEntregas()">
+                    <i class="fa fa-times"></i> Fechar
+                </button>
+            </div>
+            <div class="card-body">
+                <!-- Estatísticas -->
+                <div class="row mb-3" id="estatisticas">
+                    <!-- Será preenchido dinamicamente -->
+                </div>
+
+                <!-- Tabela de Entregas -->
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Aluno</th>
+                                <th>Data Envio</th>
+                                <th>Arquivo</th>
+                                <th>Nota</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="corpoTabelaEntregas">
+                            <!-- Será preenchido dinamicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Correção -->
+    <div class="modal fade" id="modalCorrigir" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title text-white"><i class="fa fa-pen-to-square me-2"></i>Corrigir Entrega</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formCorrigir">
+                        <input type="hidden" id="idEntrega">
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label"><strong>Aluno:</strong></label>
+                                <p id="nomeAluno" class="form-control-plaintext"></p>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label"><strong>Data de Envio:</strong></label>
+                                <p id="dataEnvio" class="form-control-plaintext"></p>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Arquivo Entregue:</strong></label>
+                            <div id="arquivoEntregue">
+                                <!-- Será preenchido dinamicamente -->
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <div class="mb-3">
+                            <label for="notaCorrecao" class="form-label"><strong>Nota (0-10):</strong></label>
+                            <input type="number" class="form-control" id="notaCorrecao" 
+                                   min="0" max="10" step="0.1" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="feedbackCorrecao" class="form-label"><strong>Feedback:</strong></label>
+                            <textarea class="form-control" id="feedbackCorrecao" rows="5" 
+                                      placeholder="Deixe um feedback para o aluno..."></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="salvarCorrecao()">
+                        <i class="fa fa-save me-2"></i>Salvar Correção
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <%- include('../../partials/footer') %>
+
+    <script>
+        let atividadeAtualId = null;
+
+        async function carregarEntregas(id_atividade, titulo) {
+            atividadeAtualId = id_atividade;
+            document.getElementById('tituloAtividade').textContent = titulo;
+            document.getElementById('areaEntregas').style.display = 'block';
+            
+            const tbody = document.getElementById('corpoTabelaEntregas');
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center"><i class="fa fa-spinner fa-spin"></i> Carregando...</td></tr>';
+
+            try {
+                const url = `/api/corrigir-atividades/entregas?id_atividade=${id_atividade}`;
+                console.log('🔍 Requisição para:', url);
+                
+                const response = await fetch(url);
+                console.log('📡 Status da resposta:', response.status);
+                
+                const data = await response.json();
+                console.log('📦 Dados completos recebidos:', data);
+
+                if (data.sucesso) {
+                    // Exibir estatísticas
+                    exibirEstatisticas(data.estatisticas);
+
+                    // Preencher tabela
+                    tbody.innerHTML = '';
+                    if (data.entregas && data.entregas.length > 0) {
+                        console.log('✅ Total de entregas:', data.entregas.length);
+                        
+                        data.entregas.forEach(entrega => {
+                            const tr = document.createElement('tr');
+                            const corrigida = entrega.nota !== null;
+                            
+                            tr.innerHTML = `
+                                <td>${entrega.nome_aluno}</td>
+                                <td>${new Date(entrega.data_envio).toLocaleString('pt-BR')}</td>
+                                <td>
+                                    ${entrega.arquivo ? 
+                                        `<a href="/uploads/${entrega.arquivo}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                            <i class="fa fa-download me-1"></i>Baixar
+                                        </a>` : 
+                                        '<span class="text-muted">Sem arquivo</span>'}
+                                </td>
+                                <td>
+                                    <span class="badge ${corrigida ? 'bg-success' : 'bg-secondary'}">
+                                        ${corrigida ? parseFloat(entrega.nota).toFixed(1) : 'N/A'}
+                                    </span>
+                                </td>
+                                <td>
+                                    ${corrigida ? 
+                                        '<span class="badge bg-success"><i class="fa fa-check me-1"></i>Corrigida</span>' : 
+                                        '<span class="badge bg-warning text-dark"><i class="fa fa-clock me-1"></i>Pendente</span>'}
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-primary" onclick="abrirModalCorrecao(${entrega.id_entrega})">
+                                        <i class="fa fa-pen me-1"></i>${corrigida ? 'Rever' : 'Corrigir'}
+                                    </button>
+                                </td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+                    } else {
+                        console.warn('⚠️ Nenhuma entrega encontrada');
+                        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Nenhuma entrega encontrada</td></tr>';
+                    }
+                } else {
+                    console.error('❌ Erro retornado pela API:', data.erro);
+                    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">Erro: ${data.erro}</td></tr>`;
+                }
+            } catch (error) {
+                console.error('❌ Erro na requisição:', error);
+                console.error('Stack trace:', error.stack);
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">Erro ao carregar entregas: ${error.message}</td></tr>`;
+            }
+
+            // Scroll suave para a área de entregas
+            document.getElementById('areaEntregas').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function exibirEstatisticas(stats) {
+            const div = document.getElementById('estatisticas');
+            if (!stats) {
+                div.innerHTML = '';
+                return;
+            }
+
+            // Converte media_notas para número ou usa 0 como padrão
+            const mediaNotas = stats.media_notas ? parseFloat(stats.media_notas) : 0;
+            const mediaTexto = stats.media_notas ? mediaNotas.toFixed(2) : '-';
+
+            div.innerHTML = `
+                <div class="col-md-3">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body text-center">
+                            <h3>${stats.total_entregas || 0}</h3>
+                            <p class="mb-0">Total de Entregas</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body text-center">
+                            <h3>${stats.corrigidas || 0}</h3>
+                            <p class="mb-0">Atividades Corrigidas</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-warning text-dark">
+                        <div class="card-body text-center">
+                            <h3>${stats.pendentes || 0}</h3>
+                            <p class="mb-0">Atividades Pendentes</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body text-center">
+                            <h3>${mediaTexto}</h3>
+                            <p class="mb-0">Média das Notas</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function abrirModalCorrecao(id_entrega) {
+            try {
+                const response = await fetch(`/api/corrigir-atividades/entrega/${id_entrega}`);
+                const data = await response.json();
+
+                if (data.sucesso) {
+                    const entrega = data.entrega;
+                    
+                    document.getElementById('idEntrega').value = entrega.id_entrega;
+                    document.getElementById('nomeAluno').textContent = entrega.nome_aluno;
+                    document.getElementById('dataEnvio').textContent = new Date(entrega.data_envio).toLocaleString('pt-BR');
+                    document.getElementById('notaCorrecao').value = entrega.nota || '';
+                    document.getElementById('feedbackCorrecao').value = entrega.feedback || '';
+                    
+                    const divArquivo = document.getElementById('arquivoEntregue');
+                    if (entrega.arquivo) {
+                        divArquivo.innerHTML = `
+                            <a href="/uploads/${entrega.arquivo}" target="_blank" class="btn btn-outline-primary">
+                                <i class="fa fa-download me-2"></i>Baixar Arquivo
+                            </a>
+                        `;
+                    } else {
+                        divArquivo.innerHTML = '<p class="text-muted">Nenhum arquivo enviado</p>';
+                    }
+
+                    const modal = new bootstrap.Modal(document.getElementById('modalCorrigir'));
+                    modal.show();
+                } else {
+                    alert('Erro ao carregar entrega: ' + data.erro);
+                }
+            } catch (error) {
+                console.error('❌ Erro ao abrir modal:', error);
+                alert('Erro ao carregar dados da entrega');
+            }
+        }
+
+        async function salvarCorrecao() {
+            const id_entrega = document.getElementById('idEntrega').value;
+            const nota = parseFloat(document.getElementById('notaCorrecao').value);
+            const feedback = document.getElementById('feedbackCorrecao').value;
+
+            if (isNaN(nota) || nota < 0 || nota > 10) {
+                alert('A nota deve estar entre 0 e 10');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/corrigir-atividades/corrigir', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id_entrega, nota, feedback })
+                });
+
+                const data = await response.json();
+
+                if (data.sucesso) {
+                    alert('Correção salva com sucesso!');
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('modalCorrigir'));
+                    modal.hide();
+                    carregarEntregas(atividadeAtualId, document.getElementById('tituloAtividade').textContent);
+                } else {
+                    alert('Erro: ' + data.erro);
+                }
+            } catch (error) {
+                console.error('❌ Erro ao salvar correção:', error);
+                alert('Erro ao salvar correção');
+            }
+        }
+
+        function fecharEntregas() {
+            document.getElementById('areaEntregas').style.display = 'none';
+            atividadeAtualId = null;
+        }
+    </script>
+</body>
+</html>

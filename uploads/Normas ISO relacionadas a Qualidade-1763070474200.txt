@@ -1,0 +1,89 @@
+Normas ISO relacionadas à Qualidade de Software
+ISO/IEC 9126
+
+Define as características de qualidade de software, que são: funcionalidade, confiabilidade, usabilidade, eficiência, manutenibilidade e portabilidade.
+Essa norma é utilizada para avaliar se um software atende aos requisitos de qualidade esperados e às necessidades do usuário.
+
+ISO/IEC 14598
+
+Complementa a ISO/IEC 9126, pois foca na avaliação da qualidade do software.
+Ela define como medir a qualidade, quais métodos utilizar e quais métricas aplicar, assegurando que o software atenda aos critérios estabelecidos pela ISO/IEC 9126.
+
+ISO/IEC 25000 (SQuaRE)
+
+Conhecida como a família SQuaRE (Software Product Quality Requirements and Evaluation), fornece uma introdução geral à série de normas de qualidade de software.
+Define conceitos, modelos e estrutura para a avaliação e garantia da qualidade de produtos de software, substituindo e aprimorando as normas ISO/IEC 9126 e 14598.
+
+Modelo de Qualidade de Software (ISO/IEC 9126)
+
+De acordo com a ISO/IEC 9126, a qualidade de um software pode ser avaliada com base em seis características principais, cada uma composta por subcaracterísticas:
+
+1. Funcionalidade
+
+Avalia se o sistema atende às necessidades e expectativas do usuário.
+Subcaracterísticas:
+
+Adequabilidade
+Acurácia
+Interoperabilidade
+Segurança de acesso
+Conformidade
+
+2. Confiabilidade
+
+Mede a capacidade do software de manter seu desempenho sob condições específicas.
+Subcaracterísticas:
+
+Maturidade
+Tolerância a falha
+Recuperabilidade
+
+3. Usabilidade
+
+Refere-se à facilidade de uso e de aprendizado do sistema pelo usuário.
+Subcaracterísticas:
+
+Apreensibilidade (facilidade de aprendizado)
+Operabilidade
+Atratividade
+Compreensibilidade
+
+4. Eficiência
+
+Avalia o desempenho do software em relação ao uso de recursos e ao tempo de resposta.
+Subcaracterísticas:
+
+Comportamento em relação ao tempo
+Comportamento em relação à utilização de recursos
+
+5. Manutenibilidade
+
+Mede a facilidade de modificar o software para corrigir defeitos, melhorar desempenho ou adaptar-se a mudanças.
+Subcaracterísticas:
+
+Analisabilidade
+Modificabilidade
+Estabilidade
+Testabilidade
+
+6. Portabilidade
+
+Avalia a capacidade do software de ser transferido de um ambiente para outro.
+Subcaracterísticas:
+
+Adaptabilidade
+Instalabilidade
+Coexistência
+
+Definição de Requisitos de Qualidade:
+Determina as características e subcaracterísticas de qualidade
+
+Preparação da Avaliação:
+Envolve a seleção das métricas de qualidade, a definição dos níveis de pontuação e dos critérios de julgamento que serão usados para avaliar o produto
+
+Procedimento de Avaliação:
+Realiza-se em três etapas principais:
+
+Medição: aplicação das métricas ao produto de software.
+Pontuação: atribuição de valores conforme os resultados obtidos.
+Julgamento: decisão final sobre a aceitação ou rejeição do software

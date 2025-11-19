@@ -1,0 +1,36 @@
+[Trabalho II Enunciado] Exercício MPS.BR e CMMI-Dev
+Exercício MPS.BR e CMMI-Dev
+
+1) Dado o estudo de caso abaixo,  que demonstra a evolução do processo de desenvolvimento de software, defina em qual nível de maturidade do CMMI o processo se encontra. Justifique sua resposta por intermédio das áreas-chaves ao relacionar os problemas encontrados com as áreas-chaves do CMMI .
+Estudos de caso:
+
+A) A empresa XYZ passou por um processo de análise de seu processo durante a execução de um projeto de software. Durante o desenvolvimento do primeiro projeto observou-se:
+- a falta de informações quanto a controle de duração de atividades causando atrasos no projeto.
+NIVEL 2: Planejamento do Projeto 
+
+
+- a falta de controle de artefatos produzidos pelos colaboradores o que resultou em retrabalho por falta de controle de mudanças em artefatos. 
+NIVEL 2: Monitoramento e Controle do Projeto
+
+- a não conformidade com os requisitos.
+NIVEL 2: Gerência de Requisitos
+
+conclusão a empresa permanece no nível 1.
+
+
+B) A empresa Perego LTDA passou por um processo de análise do seu processo durante a execução de um projeto de software. Nesse período foram observados os seguintes problemas:
+
+- colaboradores não sabiam efetuar sua atividade corretamente causando falta de qualidade no projeto final.
+nível 3- Treinamento Organizacional
+- falta de qualidade no produto por defeitos que permaneceram no sistema após a sua entrega.
+NIVEL 3=verificação e validação
+
+- o projeto sofreu por diversas vezes atrasos por motivos de falta de energia que já era previsto nesse período do ano visto que já ocorreu em anos anteriores.
+Nivel 3= Gestão de Riscos
+
+conclusão continua no nível 2
+
+--------------------------------||
+ 
+Sergio de Almeida Neto & João Vitor Santos de Lima Fagundes
+

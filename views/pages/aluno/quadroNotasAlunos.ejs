@@ -1,0 +1,309 @@
+<%- include('../../partials/head') %>
+
+<!-- jsPDF + autoTable para gerar PDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
+<body>
+    <%- include('../../partials/navbar') %>
+
+    <div class="container py-5">
+        <h1 class="mb-4 text-center">Minhas Notas</h1>
+
+        <!-- Cards de Estatísticas -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card text-center bg-primary text-white">
+                    <div class="card-body">
+                        <i class="fa fa-tasks fa-2x mb-2"></i>
+                        <h3 id="statTotal">0</h3>
+                        <p class="mb-0">Total</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center bg-success text-white">
+                    <div class="card-body">
+                        <i class="fa fa-check-circle fa-2x mb-2"></i>
+                        <h3 id="statCorrigidas">0</h3>
+                        <p class="mb-0">Corrigidas</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center bg-warning text-dark">
+                    <div class="card-body">
+                        <i class="fa fa-clock text-white fa-2x mb-2"></i>
+                        <h3 id="statPendentes">0</h3>
+                        <p class="mb-0">Pendente</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center bg-primary text-white">
+                    <div class="card-body">
+                        <i class="fa fa-star fa-2x mb-2"></i>
+                        <h3 id="statMedia">-</h3>
+                        <p class="mb-0">Média Geral</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0 text-white"><i class="fa fa-filter me-2"></i>Filtros</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="filtroDisciplina" class="form-label">Disciplina</label>
+                        <select class="form-select" id="filtroDisciplina">
+                            <option value="">Todas as disciplinas</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="filtroStatus" class="form-label">Status</label>
+                        <select class="form-select" id="filtroStatus">
+                            <option value="">Todas</option>
+                            <option value="corrigida">Corrigidas</option>
+                            <option value="pendente">Aguardando Correção</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-3 d-flex justify-content-between">
+                    <button class="btn btn-primary" id="btnFiltrar">
+                        <i class="fa fa-search me-2"></i>Filtrar
+                    </button>
+                    <button class="btn btn-danger" id="btnGerarPDF">
+                        <i class="fa fa-file-pdf me-2"></i>Baixar PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabela de Notas -->
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 text-white"><i class="fa fa-table me-2"></i>Minhas Notas por Atividade</h5>
+                <span class="badge bg-light text-dark" id="mediaFiltrada" style="display: none;">Média: -</span>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover" id="tabelaNotas">
+                        <thead>
+                            <tr>
+                                <th>Atividade</th>
+                                <th>Disciplina</th>
+                                <th>Data Entrega</th>
+                                <th>Status</th>
+                                <th>Nota</th>
+                                <th>Feedback</th>
+                            </tr>
+                        </thead>
+                        <tbody id="corpoTabelaNotas">
+                            <tr>
+                                <td colspan="6" class="text-center">
+                                    <i class="fa fa-spinner fa-spin"></i> Carregando suas notas...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <%- include('../../partials/footer') %>
+
+    <script>
+        let todasNotas = [];
+        let notasFiltradas = [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            carregarNotas();
+            document.getElementById('btnFiltrar').addEventListener('click', aplicarFiltros);
+            document.getElementById('btnGerarPDF').addEventListener('click', gerarPDF);
+        });
+
+        async function carregarNotas() {
+            const tbody = document.getElementById('corpoTabelaNotas');
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center"><i class="fa fa-spinner fa-spin"></i> Carregando...</td></tr>';
+
+            try {
+                const response = await fetch('/api/aluno/notas');
+                const data = await response.json();
+
+                if (data.sucesso && data.dados) {
+                    todasNotas = data.dados;
+                    notasFiltradas = [...todasNotas];
+                    
+                    // Preencher filtro de disciplinas
+                    preencherFiltroDisciplinas();
+                    
+                    // Atualizar estatísticas
+                    atualizarEstatisticas();
+                    
+                    // Renderizar tabela
+                    renderizarTabela();
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Nenhuma nota encontrada</td></tr>';
+                }
+            } catch (error) {
+                console.error('❌ Erro ao carregar notas:', error);
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Erro ao carregar notas</td></tr>';
+            }
+        }
+
+        function preencherFiltroDisciplinas() {
+            const select = document.getElementById('filtroDisciplina');
+            const disciplinas = [...new Set(todasNotas.map(n => n.disciplina))];
+            
+            select.innerHTML = '<option value="">Todas as disciplinas</option>';
+            disciplinas.forEach(disc => {
+                select.innerHTML += `<option value="${disc}">${disc}</option>`;
+            });
+        }
+
+        function atualizarEstatisticas() {
+            const total = todasNotas.length;
+            const corrigidas = todasNotas.filter(n => n.nota !== null).length;
+            const pendentes = total - corrigidas;
+            
+            const notasValidas = todasNotas.filter(n => n.nota !== null).map(n => parseFloat(n.nota));
+            const media = notasValidas.length > 0 
+                ? (notasValidas.reduce((a, b) => a + b, 0) / notasValidas.length).toFixed(2)
+                : '-';
+
+            document.getElementById('statTotal').textContent = total;
+            document.getElementById('statCorrigidas').textContent = corrigidas;
+            document.getElementById('statPendentes').textContent = pendentes;
+            document.getElementById('statMedia').textContent = media;
+        }
+
+        function aplicarFiltros() {
+            const filtroDisciplina = document.getElementById('filtroDisciplina').value;
+            const filtroStatus = document.getElementById('filtroStatus').value;
+
+            notasFiltradas = todasNotas.filter(nota => {
+                const matchDisciplina = !filtroDisciplina || nota.disciplina === filtroDisciplina;
+                const matchStatus = !filtroStatus || 
+                    (filtroStatus === 'corrigida' && nota.nota !== null) ||
+                    (filtroStatus === 'pendente' && nota.nota === null);
+                
+                return matchDisciplina && matchStatus;
+            });
+
+            renderizarTabela();
+        }
+
+        function renderizarTabela() {
+            const tbody = document.getElementById('corpoTabelaNotas');
+
+            if (notasFiltradas.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Nenhuma nota encontrada com os filtros selecionados</td></tr>';
+                document.getElementById('mediaFiltrada').style.display = 'none';
+                return;
+            }
+
+            tbody.innerHTML = '';
+            let somaNotas = 0;
+            let countNotas = 0;
+
+            notasFiltradas.forEach(nota => {
+                const dataEntrega = new Date(nota.data_entrega).toLocaleDateString('pt-BR');
+                const statusBadge = nota.nota !== null 
+                    ? '<span class="badge bg-success">Corrigida</span>'
+                    : '<span class="badge bg-warning text-dark">Aguardando</span>';
+                
+                const notaDisplay = nota.nota !== null 
+                    ? `<span class="badge bg-primary fs-6">${parseFloat(nota.nota).toFixed(1)}</span>`
+                    : '<span class="text-muted">-</span>';
+
+                const feedbackDisplay = nota.feedback 
+                    ? `<small class="text-muted">${nota.feedback}</small>`
+                    : '<span class="text-muted">-</span>';
+
+                if (nota.nota !== null) {
+                    somaNotas += parseFloat(nota.nota);
+                    countNotas++;
+                }
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${nota.titulo}</strong></td>
+                    <td>${nota.disciplina}</td>
+                    <td>${dataEntrega}</td>
+                    <td>${statusBadge}</td>
+                    <td>${notaDisplay}</td>
+                    <td>${feedbackDisplay}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // Atualizar média filtrada
+            if (countNotas > 0) {
+                const mediaFiltrada = (somaNotas / countNotas).toFixed(2);
+                document.getElementById('mediaFiltrada').textContent = `Média: ${mediaFiltrada}`;
+                document.getElementById('mediaFiltrada').style.display = 'inline-block';
+            } else {
+                document.getElementById('mediaFiltrada').style.display = 'none';
+            }
+        }
+
+        function gerarPDF() {
+            if (notasFiltradas.length === 0) {
+                alert('Não há notas para gerar o PDF!');
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('portrait', 'mm', 'a4');
+
+            const nomeAluno = '<%= usuario?.nome || "Aluno" %>';
+            const disciplinaFiltro = document.getElementById('filtroDisciplina').selectedOptions[0]?.text || 'Todas';
+            const mediaGeral = document.getElementById('statMedia').textContent;
+            const dataAtual = new Date().toLocaleDateString('pt-BR');
+
+            // Cabeçalho
+            doc.setFontSize(18);
+            doc.text('Quadro de Notas do Aluno', 105, 15, { align: 'center' });
+            
+            doc.setFontSize(12);
+            doc.text(`Aluno: ${nomeAluno}`, 15, 25);
+            doc.text(`Disciplina: ${disciplinaFiltro}`, 15, 32);
+            doc.text(`Data: ${dataAtual}`, 15, 39);
+            doc.text(`Média Geral: ${mediaGeral}`, 15, 46);
+
+            // Preparar dados para a tabela
+            const dadosTabela = notasFiltradas.map(nota => [
+                nota.titulo,
+                nota.disciplina,
+                new Date(nota.data_entrega).toLocaleDateString('pt-BR'),
+                nota.nota !== null ? 'Corrigida' : 'Aguardando',
+                nota.nota !== null ? parseFloat(nota.nota).toFixed(1) : '-',
+                nota.feedback || '-'
+            ]);
+
+            // Tabela
+            doc.autoTable({
+                startY: 55,
+                head: [['Atividade', 'Disciplina', 'Data Entrega', 'Status', 'Nota', 'Feedback']],
+                body: dadosTabela,
+                theme: 'grid',
+                styles: { fontSize: 9, cellPadding: 3 },
+                headStyles: { fillColor: [13, 110, 253], textColor: 255, fontStyle: 'bold' },
+                alternateRowStyles: { fillColor: [245, 245, 245] },
+                columnStyles: {
+                    5: { cellWidth: 50 } // Feedback com largura maior
+                },
+                margin: { top: 55, left: 15, right: 15 }
+            });
+
+            // Salvar
+            doc.save(`Minhas_Notas_${dataAtual.replace(/\//g, '-')}.pdf`);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,497 @@
+<%- include('../../partials/head') %>
+
+<!-- Substituir html2pdf por jsPDF + autoTable -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
+<body>
+    <%- include('../../partials/navbar') %>
+
+    <div class="container py-5">
+        <h1 class="mb-4 text-center">Quadro de Notas</h1>
+
+        <!-- Filtros -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0 text-white"><i class="fa fa-filter me-2"></i>Filtros</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label for="filtroTurma" class="form-label">Turma</label>
+                        <select class="form-select" id="filtroTurma">
+                            <option value="">Selecione uma turma</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="filtroDisciplina" class="form-label">Disciplina</label>
+                        <select class="form-select" id="filtroDisciplina">
+                            <option value="">Todas as disciplinas</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="filtroAtividade" class="form-label">Atividade</label>
+                        <select class="form-select" id="filtroAtividade">
+                            <option value="">Todas as atividades</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-3 d-flex justify-content-between">
+                    <button class="btn btn-primary" id="btnFiltrar">
+                        <i class="fa fa-search me-2"></i>Buscar Notas
+                    </button>
+                    <div>
+                        <button class="btn btn-secondary" id="btnConfigurarPesos">
+                            <i class="fa fa-balance-scale me-2"></i>Configurar Pesos
+                        </button>
+                        <button class="btn btn-danger ms-2" id="btnGerarPDF">
+                            <i class="fa fa-file-pdf me-2"></i>Baixar PDF
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabela de Notas -->
+        <div class="card" id="areaImpressao">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 text-white"><i class="fa fa-table me-2"></i>Notas dos Alunos</h5>
+                <span class="badge bg-light text-dark" id="mediaTurma" style="display: none;">Média da Turma: -</span>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover" id="tabelaNotas">
+                        <thead>
+                            <tr>
+                                <th>Aluno</th>
+                                <th>Atividade</th>
+                                <th>Disciplina</th>
+                                <th>Data Entrega</th>
+                                <th>Nota</th>
+                                <th>Peso</th>
+                                <th>Nota Ponderada</th>
+                            </tr>
+                        </thead>
+                        <tbody id="corpoTabelaNotas">
+                            <tr>
+                                <td colspan="7" class="text-center text-muted">Selecione uma turma para visualizar as notas</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para configurar pesos -->
+    <div class="modal fade" id="modalPesos" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="fa fa-balance-scale me-2"></i>Configurar Pesos das Atividades</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted">Configure o peso de cada atividade para cálculo da média ponderada. A soma dos pesos deve ser 100%.</p>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Atividade</th>
+                                    <th>Disciplina</th>
+                                    <th style="width: 150px;">Peso (%)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelaPesos">
+                                <!-- Será preenchido dinamicamente -->
+                            </tbody>
+                            <tfoot>
+                                <tr class="table-info">
+                                    <td colspan="2" class="text-end"><strong>Total:</strong></td>
+                                    <td><strong id="totalPesos">0%</strong></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                    <button type="button" class="btn btn-primary" id="btnSalvarPesos">Aplicar Pesos</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <%- include('../../partials/footer') %>
+
+    <script>
+        const turmasDisponiveis = <%- JSON.stringify(turmas || []) %>;
+        let pesosAtividades = {};
+        let atividadesCarregadas = [];
+        let dadosNotasCarregados = []; // ← NOVO: Armazena os dados para o PDF
+        
+        console.log('🎯 Turmas disponíveis carregadas:', turmasDisponiveis);
+
+        document.addEventListener('DOMContentLoaded', () => {
+            carregarTurmasUnicas();
+            document.getElementById('filtroTurma').addEventListener('change', carregarDisciplinasEAtividades);
+            document.getElementById('filtroDisciplina').addEventListener('change', carregarAtividades);
+            document.getElementById('btnFiltrar').addEventListener('click', carregarNotas);
+            document.getElementById('btnConfigurarPesos').addEventListener('click', abrirModalPesos);
+            document.getElementById('btnSalvarPesos').addEventListener('click', salvarPesos);
+            document.getElementById('btnGerarPDF').addEventListener('click', gerarPDF);
+        });
+
+        function carregarTurmasUnicas() {
+            const turmaSelect = document.getElementById('filtroTurma');
+            console.log('📋 Iniciando carregamento de turmas únicas...');
+            turmaSelect.innerHTML = '<option value="">Selecione uma turma</option>';
+
+            if (!turmasDisponiveis || turmasDisponiveis.length === 0) {
+                console.warn('⚠️ Nenhuma turma disponível');
+                turmaSelect.innerHTML += '<option disabled>Nenhuma turma encontrada</option>';
+                return;
+            }
+
+            const turmasMap = new Map();
+            turmasDisponiveis.forEach(t => {
+                if (!turmasMap.has(t.id_turma)) {
+                    turmasMap.set(t.id_turma, {
+                        id_turma: t.id_turma,
+                        nome_turma: t.nome_turma
+                    });
+                }
+            });
+
+            const turmasUnicas = Array.from(turmasMap.values());
+            turmasUnicas.forEach(turma => {
+                const option = document.createElement('option');
+                option.value = turma.id_turma;
+                option.textContent = turma.nome_turma;
+                turmaSelect.appendChild(option);
+            });
+        }
+
+        async function carregarDisciplinasEAtividades() {
+            const turmaId = document.getElementById('filtroTurma').value;
+            const disciplinaSelect = document.getElementById('filtroDisciplina');
+            disciplinaSelect.innerHTML = '<option value="">Todas as disciplinas</option>';
+            
+            if (!turmaId) {
+                document.getElementById('filtroAtividade').innerHTML = '<option value="">Todas as atividades</option>';
+                return;
+            }
+
+            const disciplinasDaTurma = turmasDisponiveis.filter(t => t.id_turma == turmaId);
+            const disciplinasMap = new Map();
+            disciplinasDaTurma.forEach(d => {
+                if (!disciplinasMap.has(d.id_disciplina)) {
+                    disciplinasMap.set(d.id_disciplina, {
+                        id_disciplina: d.id_disciplina,
+                        nome_disciplina: d.nome_disciplina
+                    });
+                }
+            });
+
+            const disciplinasUnicas = Array.from(disciplinasMap.values());
+            disciplinasUnicas.forEach(disc => {
+                const option = document.createElement('option');
+                option.value = disc.id_disciplina;
+                option.textContent = disc.nome_disciplina;
+                disciplinaSelect.appendChild(option);
+            });
+
+            await carregarAtividades();
+        }
+
+        async function carregarAtividades() {
+            const turmaId = document.getElementById('filtroTurma').value;
+            const disciplinaId = document.getElementById('filtroDisciplina').value;
+            const atividadeSelect = document.getElementById('filtroAtividade');
+            atividadeSelect.innerHTML = '<option value="">Todas as atividades</option>';
+            
+            if (!turmaId) return;
+
+            try {
+                const url = `/api/quadro-notas/atividades?id_turma=${turmaId}${disciplinaId ? '&id_disciplina=' + disciplinaId : ''}`;
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.sucesso && data.dados && data.dados.length > 0) {
+                    atividadesCarregadas = data.dados;
+                    data.dados.forEach(atividade => {
+                        const option = document.createElement('option');
+                        option.value = atividade.id_atividade;
+                        option.textContent = `${atividade.titulo} (${atividade.disciplina})`;
+                        atividadeSelect.appendChild(option);
+                        
+                        if (!pesosAtividades[atividade.id_atividade]) {
+                            pesosAtividades[atividade.id_atividade] = 10;
+                        }
+                    });
+                } else {
+                    atividadesCarregadas = [];
+                }
+            } catch (error) {
+                console.error('❌ Erro ao carregar atividades:', error);
+            }
+        }
+
+        async function carregarNotas() {
+            const turmaId = document.getElementById('filtroTurma').value;
+            const disciplinaId = document.getElementById('filtroDisciplina').value;
+            const atividadeId = document.getElementById('filtroAtividade').value;
+            const tbody = document.getElementById('corpoTabelaNotas');
+
+            if (!turmaId) {
+                alert('Selecione uma turma');
+                return;
+            }
+
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center"><i class="fa fa-spinner fa-spin"></i> Carregando...</td></tr>';
+
+            try {
+                const url = `/api/quadro-notas/notas?id_turma=${turmaId}${disciplinaId ? '&id_disciplina=' + disciplinaId : ''}`;
+                const response = await fetch(url);
+                const data = await response.json();
+
+                tbody.innerHTML = '';
+                dadosNotasCarregados = []; // ← Limpa dados anteriores
+
+                if (data.sucesso && data.dados && data.dados.length > 0) {
+                    let somaMedias = 0;
+                    let countAlunos = 0;
+
+                    data.dados.forEach(aluno => {
+                        let atividades = aluno.atividades || [];
+
+                        if (atividadeId) {
+                            atividades = atividades.filter(a => a.id_atividade == atividadeId);
+                        }
+
+                        if (atividades.length === 0) {
+                            tbody.innerHTML += `
+                                <tr>
+                                    <td>${aluno.nome_aluno}</td>
+                                    <td colspan="6" class="text-muted">Nenhuma atividade encontrada</td>
+                                </tr>
+                            `;
+                        } else {
+                            let somaPonderada = 0;
+                            let somaPesos = 0;
+
+                            atividades.forEach((atividade, index) => {
+                                const peso = pesosAtividades[atividade.id_atividade] || 10;
+                                const nota = parseFloat(atividade.nota) || 0;
+                                const notaPonderada = (nota * peso) / 100;
+                                
+                                if (atividade.nota !== null) {
+                                    somaPonderada += notaPonderada;
+                                    somaPesos += peso;
+                                }
+
+                                // ← NOVO: Armazena dados para PDF
+                                dadosNotasCarregados.push({
+                                    aluno: aluno.nome_aluno,
+                                    atividade: atividade.titulo,
+                                    disciplina: atividade.disciplina,
+                                    data: new Date(atividade.data_entrega).toLocaleDateString('pt-BR'),
+                                    nota: atividade.nota !== null ? parseFloat(atividade.nota).toFixed(1) : 'N/A',
+                                    peso: peso + '%',
+                                    notaPonderada: atividade.nota !== null ? notaPonderada.toFixed(2) : '-'
+                                });
+
+                                const tr = document.createElement('tr');
+                                
+                                if (index === 0) {
+                                    const tdAluno = document.createElement('td');
+                                    tdAluno.rowSpan = atividades.length + 1;
+                                    tdAluno.textContent = aluno.nome_aluno;
+                                    tr.appendChild(tdAluno);
+                                }
+
+                                tr.innerHTML += `
+                                    <td>${atividade.titulo}</td>
+                                    <td>${atividade.disciplina}</td>
+                                    <td>${new Date(atividade.data_entrega).toLocaleDateString('pt-BR')}</td>
+                                    <td>
+                                        <span class="badge ${atividade.nota !== null ? 'bg-success' : 'bg-secondary'}">
+                                            ${atividade.nota !== null ? parseFloat(atividade.nota).toFixed(1) : 'N/A'}
+                                        </span>
+                                    </td>
+                                    <td><strong>${peso}%</strong></td>
+                                    <td>
+                                        ${atividade.nota !== null ? `<strong>${notaPonderada.toFixed(2)}</strong>` : '-'}
+                                    </td>
+                                `;
+                                tbody.appendChild(tr);
+                            });
+
+                            const mediaAluno = somaPesos > 0 ? (somaPonderada / somaPesos) * 100 : 0;
+                            
+                            // ← NOVO: Adiciona linha de média ao array
+                            dadosNotasCarregados.push({
+                                aluno: '',
+                                atividade: '',
+                                disciplina: '',
+                                data: 'MÉDIA DO ALUNO',
+                                nota: '',
+                                peso: '',
+                                notaPonderada: mediaAluno.toFixed(2)
+                            });
+
+                            const trMedia = document.createElement('tr');
+                            trMedia.className = 'table-info';
+                            trMedia.innerHTML = `
+                                <td colspan="4" class="text-end"><strong>Média do Aluno:</strong></td>
+                                <td colspan="3"><strong>${mediaAluno.toFixed(2)}</strong></td>
+                            `;
+                            tbody.appendChild(trMedia);
+
+                            somaMedias += mediaAluno;
+                            countAlunos++;
+                        }
+                    });
+
+                    if (countAlunos > 0) {
+                        const mediaTurma = somaMedias / countAlunos;
+                        document.getElementById('mediaTurma').textContent = `Média da Turma: ${mediaTurma.toFixed(2)}`;
+                        document.getElementById('mediaTurma').style.display = 'inline-block';
+                    }
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Nenhuma nota encontrada</td></tr>';
+                }
+            } catch (error) {
+                console.error('❌ Erro ao carregar notas:', error);
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">Erro ao carregar notas</td></tr>';
+            }
+        }
+
+        function abrirModalPesos() {
+            const tbody = document.getElementById('tabelaPesos');
+            tbody.innerHTML = '';
+
+            if (atividadesCarregadas.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Selecione uma turma e carregue as atividades primeiro</td></tr>';
+            } else {
+                atividadesCarregadas.forEach(atividade => {
+                    const tr = document.createElement('tr');
+                    const peso = pesosAtividades[atividade.id_atividade] || 10;
+                    
+                    tr.innerHTML = `
+                        <td>${atividade.titulo}</td>
+                        <td>${atividade.disciplina}</td>
+                        <td>
+                            <input type="number" class="form-control peso-input" 
+                                   data-id="${atividade.id_atividade}" 
+                                   value="${peso}" 
+                                   min="0" max="100" step="1">
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                atualizarTotalPesos();
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById('modalPesos'));
+            modal.show();
+
+            document.querySelectorAll('.peso-input').forEach(input => {
+                input.addEventListener('input', atualizarTotalPesos);
+            });
+        }
+
+        function atualizarTotalPesos() {
+            let total = 0;
+            document.querySelectorAll('.peso-input').forEach(input => {
+                total += parseFloat(input.value) || 0;
+            });
+            
+            const totalElement = document.getElementById('totalPesos');
+            totalElement.textContent = total.toFixed(0) + '%';
+            
+            if (total !== 100) {
+                totalElement.classList.add('text-danger');
+                totalElement.classList.remove('text-success');
+            } else {
+                totalElement.classList.add('text-success');
+                totalElement.classList.remove('text-danger');
+            }
+        }
+
+        function salvarPesos() {
+            let total = 0;
+            const pesos = {};
+
+            document.querySelectorAll('.peso-input').forEach(input => {
+                const id = input.dataset.id;
+                const peso = parseFloat(input.value) || 0;
+                pesos[id] = peso;
+                total += peso;
+            });
+
+            if (total !== 100) {
+                alert('A soma dos pesos deve ser exatamente 100%!');
+                return;
+            }
+
+            pesosAtividades = pesos;
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalPesos'));
+            modal.hide();
+            alert('Pesos aplicados com sucesso! Clique em "Buscar Notas" para atualizar a tabela.');
+        }
+
+        // Gerar PDF com jsPDF + autoTable
+        function gerarPDF() {
+            if (dadosNotasCarregados.length === 0) {
+                alert('Carregue as notas primeiro antes de gerar o PDF!');
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('landscape', 'mm', 'a4');
+
+            const turma = document.getElementById('filtroTurma').selectedOptions[0]?.text || 'Todas';
+            const disciplina = document.getElementById('filtroDisciplina').selectedOptions[0]?.text || 'Todas';
+            const mediaTurma = document.getElementById('mediaTurma').textContent || '';
+            const dataAtual = new Date().toLocaleDateString('pt-BR');
+
+            // Cabeçalho
+            doc.setFontSize(18);
+            doc.text('Quadro de Notas', 148, 15, { align: 'center' });
+            
+            doc.setFontSize(12);
+            doc.text(`Turma: ${turma}`, 15, 25);
+            doc.text(`Disciplina: ${disciplina}`, 15, 32);
+            doc.text(`Data: ${dataAtual}`, 250, 25);
+            if (mediaTurma) {
+                doc.text(mediaTurma, 250, 32);
+            }
+
+            // Tabela
+            doc.autoTable({
+                startY: 40,
+                head: [['Aluno', 'Atividade', 'Disciplina', 'Data Entrega', 'Nota', 'Peso', 'Nota Ponderada']],
+                body: dadosNotasCarregados.map(item => [
+                    item.aluno,
+                    item.atividade,
+                    item.disciplina,
+                    item.data,
+                    item.nota,
+                    item.peso,
+                    item.notaPonderada
+                ]),
+                theme: 'grid',
+                styles: { fontSize: 9, cellPadding: 3 },
+                headStyles: { fillColor: [13, 110, 253], textColor: 255, fontStyle: 'bold' },
+                alternateRowStyles: { fillColor: [245, 245, 245] },
+                margin: { top: 40, left: 15, right: 15 }
+            });
+
+            // Salvar
+            doc.save(`Quadro_Notas_${turma}_${dataAtual.replace(/\//g, '-')}.pdf`);
+        }
+    </script>
+</body>
+</html>
