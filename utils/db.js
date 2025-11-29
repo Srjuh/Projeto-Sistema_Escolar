@@ -4,11 +4,11 @@ const mysql = require('mysql2/promise');
 class Database {
     constructor() {
         this.config = {
-            host: process.env.DB_HOST || 'shinkansen.proxy.rlwy.net',
-            port: process.env.DB_PORT || 19379,
-            user: process.env.DB_USER || 'root',
-            password: process.env.DB_PASSWORD || 'eLeeNNBIHjKBhfCKjtrKSaaLPsVrHcUi',
-            database: process.env.DB_NAME || 'railway',
+            host: process.env.DB_HOST,
+            port: process.env.DB_PORT,
+            user: process.env.DB_USER,
+            password: process.env.DB_PASSWORD,
+            database: process.env.DB_NAME,
             waitForConnections: true,
             connectionLimit: 10,
             queueLimit: 0,
