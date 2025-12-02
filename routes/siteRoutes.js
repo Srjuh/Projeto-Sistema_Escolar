@@ -23,7 +23,7 @@ router.get('/sobre', (req, res) => {
 
 // Página de contato
 router.get('/contato', (req, res) => {
-    res.render('pages/site/sobre');
+    res.render('pages/site/contato');
 });
 
 // Página de time

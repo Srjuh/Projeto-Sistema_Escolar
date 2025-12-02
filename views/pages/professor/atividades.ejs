@@ -322,6 +322,99 @@
                 }
             }
         }
+
+        // Função para formatar data para input type="date" (YYYY-MM-DD)
+        function formatarDataParaInput(dataISO) {
+            if (!dataISO) return '';
+            const data = new Date(dataISO);
+            const ano = data.getFullYear();
+            const mes = String(data.getMonth() + 1).padStart(2, '0');
+            const dia = String(data.getDate()).padStart(2, '0');
+            return `${ano}-${mes}-${dia}`;
+        }
+
+        // Função para obter a data de hoje no formato YYYY-MM-DD
+        function getDataHoje() {
+            const hoje = new Date();
+            const ano = hoje.getFullYear();
+            const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+            const dia = String(hoje.getDate()).padStart(2, '0');
+            return `${ano}-${mes}-${dia}`;
+        }
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', () => {
+            carregarAtividades();
+            carregarTurmasEDisciplinas();
+
+            // ✅ Define a data mínima como hoje nos inputs de data
+            const inputDataCriar = document.getElementById('dataEntrega');
+            const inputDataEditar = document.getElementById('editDataEntrega');
+            const dataHoje = getDataHoje();
+            
+            if (inputDataCriar) {
+                inputDataCriar.min = dataHoje;
+            }
+            if (inputDataEditar) {
+                inputDataEditar.min = dataHoje;
+            }
+
+            // ✅ Validação extra ao submeter (criar)
+            document.getElementById('formCriarAtividade').addEventListener('submit', function(e) {
+                const dataSelecionada = inputDataCriar.value;
+                if (dataSelecionada < dataHoje) {
+                    e.preventDefault();
+                    alert('A data de entrega deve ser de hoje ou futura.');
+                    inputDataCriar.focus();
+                    return false;
+                }
+            });
+
+            // ✅ Validação extra ao submeter (editar)
+            document.getElementById('formEditarAtividade').addEventListener('submit', function(e) {
+                const dataSelecionada = inputDataEditar.value;
+                if (dataSelecionada < dataHoje) {
+                    e.preventDefault();
+                    alert('A data de entrega deve ser de hoje ou futura.');
+                    inputDataEditar.focus();
+                    return false;
+                }
+            });
+        });
+
+        // Abrir modal de edição
+        async function abrirModalEdicao(id) {
+            try {
+                const response = await fetch(`/api/professor/atividades/${id}`);
+                const data = await response.json();
+
+                if (data.sucesso) {
+                    const atividade = data.dados;
+                    
+                    document.getElementById('editAtividadeId').value = atividade.id_atividade;
+                    document.getElementById('editTitulo').value = atividade.titulo;
+                    document.getElementById('editDescricao').value = atividade.descricao || '';
+                    document.getElementById('editDataEntrega').value = formatarDataParaInput(atividade.data_entrega);
+                    document.getElementById('editTurma').value = atividade.id_turma;
+                    
+                    // Carrega disciplinas da turma selecionada
+                    await carregarDisciplinasPorTurmaEdicao(atividade.id_turma);
+                    document.getElementById('editDisciplina').value = atividade.id_disciplina;
+
+                    // ✅ Reaplica a data mínima ao abrir o modal de edição
+                    const inputDataEditar = document.getElementById('editDataEntrega');
+                    inputDataEditar.min = getDataHoje();
+
+                    const modal = new bootstrap.Modal(document.getElementById('modalEditarAtividade'));
+                    modal.show();
+                } else {
+                    alert('Erro ao carregar atividade: ' + data.erro);
+                }
+            } catch (error) {
+                console.error('Erro ao carregar atividade:', error);
+                alert('Erro ao carregar atividade');
+            }
+        }
     </script>
 </body>
 </html>

@@ -1,5 +1,4 @@
-const Database = require('../utils/db');
-const db = new Database();
+const db = require('../utils/db');
 
 class CorrigirAtividadeModel {
     // Listar todas as atividades com entregas pendentes de correção

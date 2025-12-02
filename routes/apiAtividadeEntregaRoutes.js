@@ -4,43 +4,37 @@ const atividadeEntregaController = require('../controllers/atividadeEntregaContr
 const multer = require('multer');
 const path = require('path');
 
-// Configuração do Multer para upload de arquivos
+// Configuração do Multer
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, 'public/uploads/');
+    destination: function (req, file, cb) {
+        cb(null, 'uploads/');
     },
-    filename: (req, file, cb) => {
+    filename: function (req, file, cb) {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, 'atividade-' + uniqueSuffix + path.extname(file.originalname));
+        cb(null, uniqueSuffix + path.extname(file.originalname));
     }
 });
 
 const upload = multer({ 
     storage: storage,
-    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
-    fileFilter: (req, file, cb) => {
-        const allowedTypes = /pdf|doc|docx|txt|png|jpg|jpeg|zip|rar/;
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: function (req, file, cb) {
+        const allowedTypes = /pdf|doc|docx|txt|jpg|jpeg|png/;
         const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
         const mimetype = allowedTypes.test(file.mimetype);
-        
-        if (extname && mimetype) {
+
+        if (mimetype && extname) {
             return cb(null, true);
         } else {
-            cb(new Error('Tipo de arquivo não permitido!'));
+            cb(new Error('Formato de arquivo não permitido!'));
         }
     }
 });
 
-// Listar atividades do aluno
+// ✅ IMPORTANTE: Rotas da API (sem middleware de sessão aqui, já está no controller)
 router.get('/listar', atividadeEntregaController.listarAtividades);
-
-// Buscar detalhes de uma atividade
-router.get('/atividade/:id_atividade', atividadeEntregaController.buscarAtividade);
-
-// Entregar atividade (upload de arquivo)
+router.get('/buscar/:id_atividade', atividadeEntregaController.buscarAtividade); // ✅ ESTA ROTA
 router.post('/entregar', upload.single('arquivo'), atividadeEntregaController.entregarAtividade);
-
-// Estatísticas do aluno
 router.get('/estatisticas', atividadeEntregaController.estatisticas);
 
 module.exports = router;

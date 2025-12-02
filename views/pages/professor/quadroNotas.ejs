@@ -129,7 +129,8 @@
         let pesosAtividades = {};
         let atividadesCarregadas = [];
         let dadosNotasCarregados = []; // ← NOVO: Armazena os dados para o PDF
-        
+        let numeroAvaliacoes = 0; // ← NOVO: Contador de avaliações
+
         console.log('🎯 Turmas disponíveis carregadas:', turmasDisponiveis);
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -256,7 +257,7 @@
                 const data = await response.json();
 
                 tbody.innerHTML = '';
-                dadosNotasCarregados = []; // ← Limpa dados anteriores
+                dadosNotasCarregados = [];
 
                 if (data.sucesso && data.dados && data.dados.length > 0) {
                     let somaMedias = 0;
@@ -281,24 +282,25 @@
                             let somaPesos = 0;
 
                             atividades.forEach((atividade, index) => {
-                                const peso = pesosAtividades[atividade.id_atividade] || 10;
-                                const nota = parseFloat(atividade.nota) || 0;
-                                const notaPonderada = (nota * peso) / 100;
+                                // Usa o peso configurado no modal (padrão 0 se não configurado)
+                                const peso = Number(pesosAtividades[atividade.id_atividade] ?? 0);
+                                const nota = atividade.nota !== null ? Number(atividade.nota) : null;
+                                const notaPonderada = nota !== null ? (nota * peso) / 100 : null;
                                 
-                                if (atividade.nota !== null) {
+                                // Acumula apenas atividades com nota
+                                if (nota !== null) {
                                     somaPonderada += notaPonderada;
                                     somaPesos += peso;
                                 }
 
-                                // ← NOVO: Armazena dados para PDF
                                 dadosNotasCarregados.push({
                                     aluno: aluno.nome_aluno,
                                     atividade: atividade.titulo,
                                     disciplina: atividade.disciplina,
                                     data: new Date(atividade.data_entrega).toLocaleDateString('pt-BR'),
-                                    nota: atividade.nota !== null ? parseFloat(atividade.nota).toFixed(1) : 'N/A',
+                                    nota: nota !== null ? nota.toFixed(1) : 'N/A',
                                     peso: peso + '%',
-                                    notaPonderada: atividade.nota !== null ? notaPonderada.toFixed(2) : '-'
+                                    notaPonderada: notaPonderada !== null ? notaPonderada.toFixed(2) : '-'
                                 });
 
                                 const tr = document.createElement('tr');
@@ -315,21 +317,21 @@
                                     <td>${atividade.disciplina}</td>
                                     <td>${new Date(atividade.data_entrega).toLocaleDateString('pt-BR')}</td>
                                     <td>
-                                        <span class="badge ${atividade.nota !== null ? 'bg-success' : 'bg-secondary'}">
-                                            ${atividade.nota !== null ? parseFloat(atividade.nota).toFixed(1) : 'N/A'}
+                                        <span class="badge ${nota !== null ? 'bg-success' : 'bg-secondary'}">
+                                            ${nota !== null ? nota.toFixed(1) : 'N/A'}
                                         </span>
                                     </td>
                                     <td><strong>${peso}%</strong></td>
                                     <td>
-                                        ${atividade.nota !== null ? `<strong>${notaPonderada.toFixed(2)}</strong>` : '-'}
+                                        ${notaPonderada !== null ? `<strong>${notaPonderada.toFixed(2)}</strong>` : '-'}
                                     </td>
                                 `;
                                 tbody.appendChild(tr);
                             });
 
+                            // Média do aluno baseada em nota ponderada
                             const mediaAluno = somaPesos > 0 ? (somaPonderada / somaPesos) * 100 : 0;
-                            
-                            // ← NOVO: Adiciona linha de média ao array
+
                             dadosNotasCarregados.push({
                                 aluno: '',
                                 atividade: '',
@@ -343,7 +345,7 @@
                             const trMedia = document.createElement('tr');
                             trMedia.className = 'table-info';
                             trMedia.innerHTML = `
-                                <td colspan="4" class="text-end"><strong>Média do Aluno:</strong></td>
+                                <td colspan="4" class="text-end"><strong>Média do Aluno (ponderada):</strong></td>
                                 <td colspan="3"><strong>${mediaAluno.toFixed(2)}</strong></td>
                             `;
                             tbody.appendChild(trMedia);
@@ -355,15 +357,19 @@
 
                     if (countAlunos > 0) {
                         const mediaTurma = somaMedias / countAlunos;
-                        document.getElementById('mediaTurma').textContent = `Média da Turma: ${mediaTurma.toFixed(2)}`;
+                        document.getElementById('mediaTurma').textContent = `Média da Turma (ponderada): ${mediaTurma.toFixed(2)}`;
                         document.getElementById('mediaTurma').style.display = 'inline-block';
+                    } else {
+                        document.getElementById('mediaTurma').style.display = 'none';
                     }
                 } else {
                     tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Nenhuma nota encontrada</td></tr>';
+                    document.getElementById('mediaTurma').style.display = 'none';
                 }
             } catch (error) {
                 console.error('❌ Erro ao carregar notas:', error);
                 tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">Erro ao carregar notas</td></tr>';
+                document.getElementById('mediaTurma').style.display = 'none';
             }
         }
 
@@ -439,7 +445,10 @@
             pesosAtividades = pesos;
             const modal = bootstrap.Modal.getInstance(document.getElementById('modalPesos'));
             modal.hide();
-            alert('Pesos aplicados com sucesso! Clique em "Buscar Notas" para atualizar a tabela.');
+            alert('Pesos aplicados com sucesso! Atualizando a tabela...');
+
+            // ✅ Recarrega notas imediatamente para refletir os novos pesos
+            carregarNotas();
         }
 
         // Gerar PDF com jsPDF + autoTable
@@ -491,6 +500,111 @@
 
             // Salvar
             doc.save(`Quadro_Notas_${turma}_${dataAtual.replace(/\//g, '-')}.pdf`);
+        }
+
+        // Função para adicionar coluna de avaliação
+        function adicionarColuna() {
+            numeroAvaliacoes++;
+            const colunaId = `avaliacao-${numeroAvaliacoes}`;
+
+            // Adiciona cabeçalho
+            const thead = document.querySelector('#tabelaNotas thead tr');
+            const thNova = document.createElement('th');
+            thNova.innerHTML = `
+                <div class="d-flex align-items-center justify-content-between">
+                    <input type="text" 
+                           class="form-control form-control-sm nome-avaliacao" 
+                           placeholder="Nome da Avaliação"
+                           data-coluna="${colunaId}">
+                    <input type="number" 
+                           class="form-control form-control-sm ms-2 peso-avaliacao" 
+                           placeholder="Peso (%)"
+                           min="0"
+                           max="100"
+                           value="0"
+                           data-coluna="${colunaId}"
+                           style="width: 80px;">
+                    <button class="btn btn-sm btn-danger ms-2" onclick="removerColuna('${colunaId}')">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+            thead.insertBefore(thNova, thead.lastElementChild);
+
+            // Adiciona células para cada aluno
+            const tbody = document.querySelector('#tabelaNotas tbody');
+            const linhas = tbody.querySelectorAll('tr');
+            
+            linhas.forEach(linha => {
+                const tdNova = document.createElement('td');
+                const idAluno = linha.dataset.aluno;
+                tdNova.innerHTML = `
+                    <input type="number" 
+                           class="form-control form-control-sm nota-input" 
+                           min="0" 
+                           max="10" 
+                           step="0.1"
+                           data-aluno="${idAluno}"
+                           data-coluna="${colunaId}"
+                           placeholder="0.0">
+                `;
+                linha.insertBefore(tdNova, linha.lastElementChild);
+            });
+
+            // Adiciona evento de cálculo automático
+            document.querySelectorAll('.nota-input, .peso-avaliacao').forEach(input => {
+                input.addEventListener('input', calcularMediasAutomaticamente);
+            });
+
+            console.log('✅ Coluna de avaliação adicionada:', colunaId);
+        }
+
+        // Função para remover coluna de avaliação
+        function removerColuna(colunaId) {
+            numeroAvaliacoes--;
+            const thead = document.querySelector('#tabelaNotas thead tr');
+            const thRemover = Array.from(thead.querySelectorAll('th')).find(th => th.dataset.coluna === colunaId);
+            if (thRemover) {
+                thead.removeChild(thRemover);
+            }
+
+            const tbody = document.querySelector('#tabelaNotas tbody');
+            const linhas = tbody.querySelectorAll('tr');
+            linhas.forEach(linha => {
+                const tdRemover = Array.from(linha.querySelectorAll('td')).find(td => td.dataset.coluna === colunaId);
+                if (tdRemover) {
+                    linha.removeChild(tdRemover);
+                }
+            });
+
+            console.log('✅ Coluna de avaliação removida:', colunaId);
+        }
+
+        // Função para calcular médias automaticamente
+        function calcularMediasAutomaticamente() {
+            const linhas = document.querySelectorAll('#tabelaNotas tbody tr');
+            linhas.forEach(linha => {
+                const notas = Array.from(linha.querySelectorAll('.nota-input'));
+                const pesos = Array.from(linha.querySelectorAll('.peso-avaliacao'));
+                
+                let somaPonderada = 0;
+                let somaPesos = 0;
+
+                notas.forEach((notaInput, index) => {
+                    const nota = parseFloat(notaInput.value) || 0;
+                    const peso = parseFloat(pesos[index].value) || 0;
+                    const notaPonderada = (nota * peso) / 100;
+                    
+                    somaPonderada += notaPonderada;
+                    somaPesos += peso;
+                });
+
+                const media = somaPesos > 0 ? (somaPonderada / somaPesos) * 100 : 0;
+                const tdMedia = linha.querySelector('.td-media');
+                if (tdMedia) {
+                    tdMedia.textContent = media.toFixed(2);
+                }
+            });
         }
     </script>
 </body>

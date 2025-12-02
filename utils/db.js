@@ -1,9 +1,15 @@
 require('dotenv').config();
 const mysql = require('mysql2/promise');
 
+let instance = null; // <--- SINGLETON
+
 class Database {
     constructor() {
-        this.config = {
+        if (instance) {
+            return instance; // <--- impede múltiplos pools
+        }
+
+        this.pool = mysql.createPool({
             host: process.env.DB_HOST,
             port: process.env.DB_PORT,
             user: process.env.DB_USER,
@@ -11,49 +17,60 @@ class Database {
             database: process.env.DB_NAME,
             waitForConnections: true,
             connectionLimit: 10,
+            maxIdle: 10,
+            idleTimeout: 60000,
             queueLimit: 0,
             enableKeepAlive: true,
-            keepAliveInitialDelay: 0
-        };
+            keepAliveInitialDelay: 0,
+            connectTimeout: 60000,
+        });
 
-        this.pool = mysql.createPool(this.config);
         console.log('🔌 Pool de conexões MySQL criado (Railway)');
+
+        this.testarConexao();
+
+        instance = this; // <--- salva a instância
+    }
+
+    async testarConexao() {
+        try {
+            const conn = await this.pool.getConnection();
+            console.log('✅ Conexão com banco de dados testada com sucesso!');
+            conn.release();
+        } catch (err) {
+            console.error('❌ Erro ao testar conexão:', err.message);
+        }
     }
 
     async ExecutaComando(sql, params = []) {
+        const conn = await this.pool.getConnection();
         try {
-            const [rows] = await this.pool.execute(sql, params);
+            const [rows] = await conn.execute(sql, params);
             return rows;
-        } catch (error) {
-            console.error('❌ Erro ao executar comando SQL:', error);
-            throw error;
+        } finally {
+            conn.release();
         }
     }
 
     async ExecutaComandoNonQuery(sql, params = []) {
+        const conn = await this.pool.getConnection();
         try {
-            const [result] = await this.pool.execute(sql, params);
+            const [result] = await conn.execute(sql, params);
             return result;
-        } catch (error) {
-            console.error('❌ Erro ao executar comando NonQuery:', error);
-            throw error;
+        } finally {
+            conn.release();
         }
     }
 
     async ExecutaComandoLastInserted(sql, params = []) {
+        const conn = await this.pool.getConnection();
         try {
-            const [result] = await this.pool.execute(sql, params);
+            const [result] = await conn.execute(sql, params);
             return { insertId: result.insertId };
-        } catch (error) {
-            console.error('❌ Erro ao executar comando LastInserted:', error);
-            throw error;
+        } finally {
+            conn.release();
         }
-    }
-
-    async close() {
-        await this.pool.end();
-        console.log('🔌 Pool de conexões MySQL fechado');
     }
 }
 
-module.exports = Database;
+module.exports = new Database(); // <--- exporta instância única

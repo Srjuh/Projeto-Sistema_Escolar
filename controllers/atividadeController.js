@@ -2,6 +2,33 @@ const atividadeModel = require('../models/atividadeModel');
 const turmaModel = require('../models/turmaModel');
 const disciplinaModel = require('../models/disciplinaModel');
 
+// Helper: valida se o ano tem até 4 dígitos (aceita formatos ISO e yyyy-mm-dd)
+function isYearValid(dateStr) {
+    if (!dateStr || typeof dateStr !== 'string') return false;
+
+    // Pega somente a parte da data antes do "T" caso venha ISO
+    const onlyDate = dateStr.split('T')[0];
+
+    // Extrai ano (parte antes do primeiro '-')
+    const parts = onlyDate.split('-');
+    const year = parts[0];
+
+    // Ano deve ser numérico e ter entre 1 e 4 dígitos
+    return /^\d{1,4}$/.test(year);
+}
+
+// Helper: valida se a data (yyyy-mm-dd ou ISO) é hoje ou futura
+function isDateOnOrAfterToday(dateStr) {
+    const input = new Date(dateStr);
+    if (isNaN(input.getTime())) return false;
+
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    input.setHours(0,0,0,0);
+
+    return input.getTime() >= today.getTime();
+}
+
 // Função para verificar sessão do professor
 function verificarSessao(req, res) {
     const id_professor = req.session?.usuario?.id_professor;
@@ -60,61 +87,83 @@ module.exports = {
     // Criar nova atividade
     async criar(req, res) {
         try {
-            // Verifica a sessão do professor
             const id_professor = verificarSessao(req, res);
-                if (!id_professor) return;
+            if (!id_professor) return;
 
-            // Extrai os dados do corpo da requisição
             const { titulo, descricao, data_entrega, id_turma, id_disciplina } = req.body;
-                if (!titulo || !data_entrega || !id_turma || !id_disciplina) {
-                    return res.json({ sucesso: false, erro: 'Campos obrigatórios faltando.' });
-                }
+            if (!titulo || !data_entrega || !id_turma || !id_disciplina) {
+                return res.json({ sucesso: false, erro: 'Campos obrigatórios faltando.' });
+            }
 
-            // Verifica se o professor pode criar atividade nessa turma/disciplina
+            // Validação: ano com até 4 dígitos
+            if (!isYearValid(data_entrega)) {
+                return res.json({
+                    sucesso: false,
+                    erro: 'Ano inválido. Informe uma data com ano de até 4 dígitos (ex.: 2025, 2026...).'
+                });
+            }
+
+            // Validação: data hoje ou futura
+            if (!isDateOnOrAfterToday(data_entrega)) {
+                return res.json({
+                    sucesso: false,
+                    erro: 'Data de entrega inválida. A data deve ser de hoje ou futura.'
+                });
+            }
+
             const ok = await turmaModel.verificarProfessorNaTurma(id_professor, id_turma, id_disciplina);
-                if (!ok) return res.json({ sucesso: false, erro: 'Você não está vinculado a essa turma/disciplina.' });
+            if (!ok) return res.json({ sucesso: false, erro: 'Você não está vinculado a essa turma/disciplina.' });
 
-            // Cria a atividade no banco
             const result = await atividadeModel.criar({ titulo, descricao, data_entrega, id_turma, id_disciplina });
-                res.json({ sucesso: true, mensagem: 'Atividade criada.', id: result.insertId || null });
-        
+            res.json({ sucesso: true, mensagem: 'Atividade criada.', id: result.insertId || null });
+
         } catch (error) {
             console.error('Erro ao criar atividade:', error);
-                res.json({ sucesso: false, erro: 'Erro ao criar atividade.' });
+            res.json({ sucesso: false, erro: 'Erro ao criar atividade.' });
         }
     },
 
     // Atualizar atividade
     async atualizar(req, res) {
         try {
-            // Verifica a sessão do professor
             const id_professor = verificarSessao(req, res);
-                if (!id_professor) return;
+            if (!id_professor) return;
 
-            // Pega o ID da atividade e os novos dados
             const { id } = req.params;
             const { titulo, descricao, data_entrega, id_turma, id_disciplina } = req.body;
 
-            // Busca a atividade atual
             const atividade = await atividadeModel.buscarPorId(id);
-                if (!atividade) return res.json({ sucesso: false, erro: 'Atividade não encontrada.' });
+            if (!atividade) return res.json({ sucesso: false, erro: 'Atividade não encontrada.' });
 
-            // Verifica permissão na atividade atual
-            const okAtual = await turmaModel.verificarProfessorNaTurma(id_professor, atividade.id_turma, atividade.id_disciplina);
-            
-            // Verifica permissão na nova turma/disciplina
-            const okNovo = await turmaModel.verificarProfessorNaTurma(id_professor, id_turma, id_disciplina);
-                if (!okAtual || !okNovo) {
-                    return res.json({ sucesso: false, erro: 'Sem permissão para editar esta atividade / mover para a turma escolhida.' });
+            // Validações somente se data_entrega foi informada
+            if (data_entrega) {
+                if (!isYearValid(data_entrega)) {
+                    return res.json({
+                        sucesso: false,
+                        erro: 'Ano inválido. Informe uma data com ano de até 4 dígitos (ex.: 2025, 2026...).'
+                    });
                 }
 
-            // Atualiza a atividade
+                if (!isDateOnOrAfterToday(data_entrega)) {
+                    return res.json({
+                        sucesso: false,
+                        erro: 'Data de entrega inválida. A data deve ser de hoje ou futura.'
+                    });
+                }
+            }
+
+            const okAtual = await turmaModel.verificarProfessorNaTurma(id_professor, atividade.id_turma, atividade.id_disciplina);
+            const okNovo = await turmaModel.verificarProfessorNaTurma(id_professor, id_turma, id_disciplina);
+            if (!okAtual || !okNovo) {
+                return res.json({ sucesso: false, erro: 'Sem permissão para editar esta atividade / mover para a turma escolhida.' });
+            }
+
             await atividadeModel.atualizar(id, { titulo, descricao, data_entrega, id_turma, id_disciplina });
-                res.json({ sucesso: true, mensagem: 'Atividade atualizada.' });
-        
+            res.json({ sucesso: true, mensagem: 'Atividade atualizada.' });
+
         } catch (error) {
             console.error('Erro ao atualizar atividade:', error);
-                res.json({ sucesso: false, erro: 'Erro ao atualizar atividade.' });
+            res.json({ sucesso: false, erro: 'Erro ao atualizar atividade.' });
         }
     },
 

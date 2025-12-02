@@ -1,5 +1,4 @@
-const Database = require('../utils/db');
-const db = new Database();
+const db = require('../utils/db');
 
 class QuadroNotasModel {
     // Listar notas por turma e disciplina (Professor) - CORRIGIDO COM FILTRO DE PROFESSOR

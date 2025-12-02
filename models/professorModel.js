@@ -1,5 +1,4 @@
-const Database = require('../utils/db');
-const db = new Database();
+const db = require('../utils/db');
 
 class ProfessorModel {
     listar() {

@@ -17,9 +17,9 @@
                         <label for="filtroStatus" class="form-label">Status</label>
                         <select class="form-select" id="filtroStatus">
                             <option value="">Todas</option>
-                            <option value="pendente">Pendentes</option>
-                            <option value="entregue">Entregues</option>
-                            <option value="atrasada">Atrasadas</option>
+                            <option value="Pendente">Pendentes</option>
+                            <option value="Entregue">Entregues</option>
+                            <option value="Atrasada">Atrasadas</option>
                         </select>
                     </div>
                     <div class="col-md-4">
@@ -89,67 +89,103 @@
         </div>
     </div>
 
-    <!-- Modal de Entrega -->
-    <div class="modal fade" id="modalEntregar" tabindex="-1">
+    <!-- Modal Enviar Atividade -->
+    <div class="modal fade" id="modalEnviarAtividade" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title"><i class="fa fa-upload me-2"></i>Entregar Atividade</h5>
+                    <h5 class="modal-title text-white">Enviar Atividade</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="formEntregar" enctype="multipart/form-data">
-                        <input type="hidden" id="idAtividade">
-                        <input type="hidden" id="idEntrega">
-                        
-                        <div class="mb-3">
-                            <label class="form-label"><strong>Título:</strong></label>
-                            <p id="tituloAtividade" class="form-control-plaintext"></p>
+                    <div id="detalhesAtividade" class="mb-4">
+                        <h6 class="fw-bold" id="tituloAtividade"></h6>
+                        <p class="text-muted mb-2"><strong>Disciplina:</strong> <span id="disciplinaAtividade"></span></p>
+                        <p class="text-muted mb-2"><strong>Turma:</strong> <span id="turmaAtividade"></span></p>
+                        <p class="text-muted mb-3"><strong>Data de Entrega:</strong> <span id="dataEntregaAtividade"></span></p>
+                        <div class="alert alert-info">
+                            <strong>Descrição:</strong>
+                            <p class="mb-0 mt-2" id="descricaoAtividade"></p>
                         </div>
+                    </div>
 
-                        <div class="mb-3">
-                            <label class="form-label"><strong>Disciplina:</strong></label>
-                            <p id="disciplinaAtividade" class="form-control-plaintext"></p>
+                    <!-- Seletor de Tipo de Entrega -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Como deseja responder?</label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="tipoEntrega" id="tipoTexto" value="texto" checked>
+                            <label class="btn btn-outline-primary" for="tipoTexto">
+                                <i class="fas fa-keyboard me-2"></i>Texto
+                            </label>
+
+                            <input type="radio" class="btn-check" name="tipoEntrega" id="tipoArquivo" value="arquivo">
+                            <label class="btn btn-outline-primary" for="tipoArquivo">
+                                <i class="fas fa-file me-2"></i>Arquivo
+                            </label>
                         </div>
+                    </div>
 
-                        <div class="mb-3">
-                            <label class="form-label"><strong>Data de Entrega:</strong></label>
-                            <p id="dataEntregaAtividade" class="form-control-plaintext"></p>
-                        </div>
+                    <form id="formEnviarAtividade" enctype="multipart/form-data">
+                        <input type="hidden" id="idAtividade" name="id_atividade">
+                        <input type="hidden" id="idEntrega" name="id_entrega">
 
-                        <div class="mb-3">
-                            <label class="form-label"><strong>Descrição:</strong></label>
-                            <p id="descricaoAtividade" class="form-control-plaintext text-muted"></p>
-                        </div>
-
-                        <hr>
-
-                        <div id="entregaAnterior" class="mb-3" style="display: none;">
-                            <div class="alert alert-info">
-                                <i class="fa fa-info-circle me-2"></i>
-                                <strong>Você já entregou esta atividade.</strong>
-                                <p class="mb-0">Enviado em: <span id="dataEnvioAnterior"></span></p>
-                                <p class="mb-0">Arquivo: <a href="#" id="linkArquivoAnterior" target="_blank">Baixar arquivo anterior</a></p>
-                                <p class="mb-1" id="notaAnterior" style="display: none;">
-                                    <strong>Nota:</strong> <span id="valorNota"></span>
-                                </p>
-                                <p class="mb-0" id="feedbackAnterior" style="display: none;">
-                                    <strong>Feedback:</strong> <span id="valorFeedback"></span>
-                                </p>
+                        <!-- Campo de Texto -->
+                        <div id="campoTexto" class="mb-3">
+                            <label for="textoResposta" class="form-label fw-bold">
+                                <i class="fas fa-edit me-2"></i>Sua Resposta
+                            </label>
+                            <textarea 
+                                class="form-control" 
+                                id="textoResposta" 
+                                name="texto" 
+                                rows="8" 
+                                placeholder="Digite sua resposta aqui..."
+                            ></textarea>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Escreva sua resposta de forma clara e objetiva.
                             </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="arquivo" class="form-label"><strong>Arquivo:</strong> <span class="text-danger">*</span></label>
-                            <input type="file" class="form-control" id="arquivo" name="arquivo" required>
-                            <small class="text-muted">Formatos aceitos: PDF, DOC, DOCX, TXT, PNG, JPG, ZIP, RAR (máx. 10MB)</small>
+                        <!-- Campo de Arquivo -->
+                        <div id="campoArquivo" class="mb-3" style="display: none;">
+                            <label for="arquivoAtividade" class="form-label fw-bold">
+                                <i class="fas fa-upload me-2"></i>Selecione o Arquivo
+                            </label>
+                            <input 
+                                type="file" 
+                                class="form-control" 
+                                id="arquivoAtividade" 
+                                name="arquivo"
+                                accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
+                            >
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Formatos aceitos: PDF, DOC, DOCX, TXT, JPG, PNG (máx. 10MB)
+                            </div>
+                            <div id="arquivoAtualInfo" class="alert alert-success mt-2" style="display: none;">
+                                <i class="fas fa-check-circle me-2"></i>
+                                <strong>Arquivo atual:</strong> <span id="nomeArquivoAtual"></span>
+                            </div>
+                        </div>
+
+                        <!-- Entrega Já Existente -->
+                        <div id="entregaExistenteInfo" class="alert alert-warning" style="display: none;">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Você já enviou esta atividade.</strong> 
+                            <span id="tipoEntregaAtual"></span>
+                            <br>
+                            <small>Ao enviar novamente, a entrega anterior será substituída.</small>
                         </div>
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" onclick="enviarAtividade()">
-                        <i class="fa fa-paper-plane me-2"></i>Enviar Atividade
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Cancelar
+                    </button>
+                    <button type="button" class="btn btn-primary" id="btnEnviarAtividade">
+                        <i class="fas fa-paper-plane me-2"></i>
+                        <span id="textoBtnEnviar">Enviar</span>
                     </button>
                 </div>
             </div>
@@ -161,12 +197,38 @@
     <script>
         let todasAtividades = [];
         let atividadesFiltradas = [];
+        let atividadeAtual = null;
 
+        // Inicialização
         document.addEventListener('DOMContentLoaded', () => {
             carregarEstatisticas();
             carregarAtividades();
+            configurarEventListeners();
         });
 
+        // Configurar event listeners
+        function configurarEventListeners() {
+            // Alternar entre texto e arquivo
+            document.querySelectorAll('input[name="tipoEntrega"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    const campoTexto = document.getElementById('campoTexto');
+                    const campoArquivo = document.getElementById('campoArquivo');
+                    
+                    if (this.value === 'texto') {
+                        campoTexto.style.display = 'block';
+                        campoArquivo.style.display = 'none';
+                    } else {
+                        campoTexto.style.display = 'none';
+                        campoArquivo.style.display = 'block';
+                    }
+                });
+            });
+
+            // Enviar atividade
+            document.getElementById('btnEnviarAtividade').addEventListener('click', enviarAtividade);
+        }
+
+        // Carregar estatísticas
         async function carregarEstatisticas() {
             try {
                 const response = await fetch('/api/aluno/atividades/estatisticas');
@@ -176,14 +238,17 @@
                     const stats = data.dados;
                     document.getElementById('statTotal').textContent = stats.total_atividades || 0;
                     document.getElementById('statEntregues').textContent = stats.total_entregues || 0;
-                    document.getElementById('statPendentes').textContent = stats.pendentes || 0;
-                    document.getElementById('statAtrasadas').textContent = stats.atrasadas || 0;
+                    
+                    const pendentes = (stats.total_atividades || 0) - (stats.total_entregues || 0) - (stats.total_atrasadas || 0);
+                    document.getElementById('statPendentes').textContent = pendentes > 0 ? pendentes : 0;
+                    document.getElementById('statAtrasadas').textContent = stats.total_atrasadas || 0;
                 }
             } catch (error) {
                 console.error('❌ Erro ao carregar estatísticas:', error);
             }
         }
 
+        // Carregar atividades
         async function carregarAtividades() {
             const container = document.getElementById('listaAtividades');
             container.innerHTML = '<div class="text-center py-3"><i class="fa fa-spinner fa-spin"></i> Carregando...</div>';
@@ -196,10 +261,7 @@
                     todasAtividades = data.dados;
                     atividadesFiltradas = [...todasAtividades];
                     
-                    // Preencher filtro de disciplinas
                     preencherFiltroDisciplinas();
-                    
-                    // Renderizar atividades
                     renderizarAtividades();
                 } else {
                     container.innerHTML = '<div class="alert alert-info">Nenhuma atividade encontrada.</div>';
@@ -210,6 +272,7 @@
             }
         }
 
+        // Preencher filtro de disciplinas
         function preencherFiltroDisciplinas() {
             const select = document.getElementById('filtroDisciplina');
             const disciplinas = [...new Set(todasAtividades.map(a => a.disciplina))];
@@ -220,12 +283,13 @@
             });
         }
 
+        // Aplicar filtros
         function aplicarFiltros() {
-            const filtroStatus = document.getElementById('filtroStatus').value;
+            const filtroStatus = document.getElementById('filtroStatus').value.toLowerCase();
             const filtroDisciplina = document.getElementById('filtroDisciplina').value;
 
             atividadesFiltradas = todasAtividades.filter(atividade => {
-                const matchStatus = !filtroStatus || atividade.status === filtroStatus;
+                const matchStatus = !filtroStatus || atividade.status.toLowerCase() === filtroStatus;
                 const matchDisciplina = !filtroDisciplina || atividade.disciplina === filtroDisciplina;
                 return matchStatus && matchDisciplina;
             });
@@ -233,6 +297,7 @@
             renderizarAtividades();
         }
 
+        // Renderizar atividades
         function renderizarAtividades() {
             const container = document.getElementById('listaAtividades');
 
@@ -248,13 +313,7 @@
                     'entregue': 'bg-success',
                     'pendente': 'bg-warning text-dark',
                     'atrasada': 'bg-danger'
-                }[atividade.status] || 'bg-secondary';
-
-                const badgeText = {
-                    'entregue': 'Entregue',
-                    'pendente': 'Pendente',
-                    'atrasada': 'Atrasada'
-                }[atividade.status] || 'Desconhecido';
+                }[atividade.status.toLowerCase()] || 'bg-secondary';
 
                 const dataEntrega = new Date(atividade.data_entrega).toLocaleDateString('pt-BR');
                 const temNota = atividade.nota !== null;
@@ -271,17 +330,13 @@
                                 </p>
                                 ${atividade.descricao ? `<p class="mb-1 small">${atividade.descricao}</p>` : ''}
                                 ${temNota ? `<p class="mb-0"><strong>Nota:</strong> <span class="badge bg-primary">${parseFloat(atividade.nota).toFixed(1)}</span></p>` : ''}
+                                ${atividade.feedback ? `<p class="mb-0 mt-2"><strong>Feedback:</strong> ${atividade.feedback}</p>` : ''}
                             </div>
                             <div class="text-end ms-3">
-                                <span class="badge ${badgeClass} mb-2">${badgeText}</span><br>
-                                ${atividade.status !== 'entregue' || !temNota ? 
-                                    `<button class="btn btn-sm btn-primary" onclick="abrirModalEntrega(${atividade.id_atividade})">
-                                        <i class="fa fa-upload me-1"></i>${atividade.id_entrega ? 'Reenviar' : 'Entregar'}
-                                    </button>` : 
-                                    `<button class="btn btn-sm btn-info text-white" onclick="abrirModalEntrega(${atividade.id_atividade})">
-                                        <i class="fa fa-eye me-1"></i>Ver Detalhes
-                                    </button>`
-                                }
+                                <span class="badge ${badgeClass} mb-2">${atividade.status}</span><br>
+                                <button class="btn btn-sm btn-primary" onclick="abrirModalEntrega(${atividade.id_atividade})">
+                                    <i class="fa fa-${atividade.id_entrega ? 'edit' : 'upload'} me-1"></i>${atividade.id_entrega ? 'Reenviar' : 'Entregar'}
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -292,91 +347,136 @@
             container.innerHTML = html;
         }
 
+        // Abrir modal de entrega
         async function abrirModalEntrega(id_atividade) {
             try {
-                const response = await fetch(`/api/aluno/atividades/atividade/${id_atividade}`);
+                console.log('📂 Abrindo modal para atividade:', id_atividade);
+                
+                const response = await fetch(`/api/aluno/atividades/buscar/${id_atividade}`);
                 const data = await response.json();
 
-                if (data.sucesso && data.dados) {
-                    const atividade = data.dados;
+                console.log('📦 Resposta da API:', data);
+
+                if (data.sucesso) {
+                    atividadeAtual = data.dados;
                     
-                    document.getElementById('idAtividade').value = atividade.id_atividade;
-                    document.getElementById('idEntrega').value = atividade.id_entrega || '';
-                    document.getElementById('tituloAtividade').textContent = atividade.titulo;
-                    document.getElementById('disciplinaAtividade').textContent = atividade.disciplina;
-                    document.getElementById('dataEntregaAtividade').textContent = new Date(atividade.data_entrega).toLocaleString('pt-BR');
-                    document.getElementById('descricaoAtividade').textContent = atividade.descricao || 'Sem descrição';
+                    // Preenche informações
+                    document.getElementById('tituloAtividade').textContent = atividadeAtual.titulo;
+                    document.getElementById('disciplinaAtividade').textContent = atividadeAtual.disciplina;
+                    document.getElementById('turmaAtividade').textContent = atividadeAtual.turma;
+                    document.getElementById('dataEntregaAtividade').textContent = new Date(atividadeAtual.data_entrega).toLocaleDateString('pt-BR');
+                    document.getElementById('descricaoAtividade').textContent = atividadeAtual.descricao || 'Sem descrição';
+                    document.getElementById('idAtividade').value = atividadeAtual.id_atividade;
+                    document.getElementById('idEntrega').value = atividadeAtual.id_entrega || '';
 
-                    // Se já foi entregue, mostra informações
-                    if (atividade.id_entrega) {
-                        document.getElementById('entregaAnterior').style.display = 'block';
-                        document.getElementById('dataEnvioAnterior').textContent = new Date(atividade.data_envio).toLocaleString('pt-BR');
-                        document.getElementById('linkArquivoAnterior').href = `/uploads/${atividade.arquivo}`;
-                        
-                        if (atividade.nota !== null) {
-                            document.getElementById('notaAnterior').style.display = 'block';
-                            document.getElementById('valorNota').textContent = parseFloat(atividade.nota).toFixed(1);
-                        } else {
-                            document.getElementById('notaAnterior').style.display = 'none';
-                        }
+                    // Reseta campos
+                    document.getElementById('campoTexto').style.display = 'block';
+                    document.getElementById('campoArquivo').style.display = 'none';
+                    document.getElementById('tipoTexto').checked = true;
+                    document.getElementById('textoResposta').value = '';
+                    document.getElementById('arquivoAtualInfo').style.display = 'none';
 
-                        if (atividade.feedback) {
-                            document.getElementById('feedbackAnterior').style.display = 'block';
-                            document.getElementById('valorFeedback').textContent = atividade.feedback;
-                        } else {
-                            document.getElementById('feedbackAnterior').style.display = 'none';
+                    // Se já existe entrega
+                    if (atividadeAtual.id_entrega) {
+                        document.getElementById('entregaExistenteInfo').style.display = 'block';
+                        document.getElementById('textoBtnEnviar').textContent = 'Reenviar';
+
+                        if (atividadeAtual.texto) {
+                            document.getElementById('tipoTexto').checked = true;
+                            document.getElementById('textoResposta').value = atividadeAtual.texto;
+                            document.getElementById('campoTexto').style.display = 'block';
+                            document.getElementById('campoArquivo').style.display = 'none';
+                            document.getElementById('tipoEntregaAtual').textContent = 'Enviado como: Texto';
+                        } else if (atividadeAtual.arquivo) {
+                            document.getElementById('tipoArquivo').checked = true;
+                            document.getElementById('campoTexto').style.display = 'none';
+                            document.getElementById('campoArquivo').style.display = 'block';
+                            document.getElementById('arquivoAtualInfo').style.display = 'block';
+                            document.getElementById('nomeArquivoAtual').textContent = atividadeAtual.arquivo;
+                            document.getElementById('tipoEntregaAtual').textContent = 'Enviado como: Arquivo';
                         }
                     } else {
-                        document.getElementById('entregaAnterior').style.display = 'none';
+                        document.getElementById('entregaExistenteInfo').style.display = 'none';
+                        document.getElementById('textoBtnEnviar').textContent = 'Enviar';
                     }
 
-                    const modal = new bootstrap.Modal(document.getElementById('modalEntregar'));
+                    const modal = new bootstrap.Modal(document.getElementById('modalEnviarAtividade'));
                     modal.show();
                 } else {
                     alert('Erro ao carregar atividade: ' + data.erro);
                 }
             } catch (error) {
                 console.error('❌ Erro ao abrir modal:', error);
-                alert('Erro ao carregar dados da atividade');
+                alert('Erro ao carregar atividade');
             }
         }
 
+        // Enviar atividade
         async function enviarAtividade() {
-            const id_atividade = document.getElementById('idAtividade').value;
-            const id_entrega = document.getElementById('idEntrega').value;
-            const arquivo = document.getElementById('arquivo').files[0];
-
-            if (!arquivo) {
-                alert('Por favor, selecione um arquivo!');
-                return;
-            }
-
-            const formData = new FormData();
-            formData.append('id_atividade', id_atividade);
-            formData.append('id_entrega', id_entrega);
-            formData.append('arquivo', arquivo);
-
+            const btn = document.getElementById('btnEnviarAtividade');
+            const btnSpan = btn.querySelector('span');
+            const btnIcon = btn.querySelector('i');
+            const textoOriginal = btnSpan.textContent;
+            
             try {
+                const formData = new FormData(document.getElementById('formEnviarAtividade'));
+                const tipoEntrega = document.querySelector('input[name="tipoEntrega"]:checked').value;
+                
+                formData.append('tipo_entrega', tipoEntrega);
+
+                // Validações
+                if (tipoEntrega === 'texto') {
+                    const texto = document.getElementById('textoResposta').value.trim();
+                    if (!texto) {
+                        alert('Por favor, escreva sua resposta antes de enviar.');
+                        return;
+                    }
+                } else {
+                    const arquivo = document.getElementById('arquivoAtividade').files[0];
+                    const idEntrega = document.getElementById('idEntrega').value;
+                    
+                    if (!arquivo && !idEntrega) {
+                        alert('Por favor, selecione um arquivo para enviar.');
+                        return;
+                    }
+                }
+
+                // Desabilita botão e mostra loading
+                btn.disabled = true;
+                btnIcon.className = 'fa fa-spinner fa-spin me-2';
+                btnSpan.textContent = 'Enviando...';
+
+                console.log('📤 Enviando atividade...', {
+                    id_atividade: formData.get('id_atividade'),
+                    tipo_entrega: formData.get('tipo_entrega')
+                });
+
                 const response = await fetch('/api/aluno/atividades/entregar', {
                     method: 'POST',
                     body: formData
                 });
 
                 const data = await response.json();
+                console.log('📥 Resposta do servidor:', data);
 
                 if (data.sucesso) {
                     alert(data.mensagem);
-                    const modal = bootstrap.Modal.getInstance(document.getElementById('modalEntregar'));
-                    modal.hide();
-                    document.getElementById('formEntregar').reset();
+                    bootstrap.Modal.getInstance(document.getElementById('modalEnviarAtividade')).hide();
+                    document.getElementById('formEnviarAtividade').reset();
                     carregarEstatisticas();
                     carregarAtividades();
                 } else {
                     alert('Erro: ' + data.erro);
                 }
+
             } catch (error) {
                 console.error('❌ Erro ao enviar atividade:', error);
-                alert('Erro ao enviar atividade');
+                alert('Erro ao enviar atividade. Verifique o console para mais detalhes.');
+            } finally {
+                // Restaura botão
+                btn.disabled = false;
+                btnIcon.className = 'fas fa-paper-plane me-2';
+                btnSpan.textContent = textoOriginal;
             }
         }
     </script>

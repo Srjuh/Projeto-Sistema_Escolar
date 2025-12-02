@@ -1,5 +1,4 @@
-const Database = require('../utils/db');
-const db = new Database();
+const db = require('../utils/db');
 
 class AlunoNotasModel {
     // Buscar todas as notas do aluno
