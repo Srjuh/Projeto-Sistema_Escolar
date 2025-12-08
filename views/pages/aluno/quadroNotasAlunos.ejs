@@ -137,26 +137,22 @@
             tbody.innerHTML = '<tr><td colspan="6" class="text-center"><i class="fa fa-spinner fa-spin"></i> Carregando...</td></tr>';
 
             try {
-                const response = await fetch('/api/aluno/notas');
+                //URL atualizada
+                const response = await fetch('/aluno/api/notas');
                 const data = await response.json();
 
                 if (data.sucesso && data.dados) {
                     todasNotas = data.dados;
                     notasFiltradas = [...todasNotas];
                     
-                    // Preencher filtro de disciplinas
                     preencherFiltroDisciplinas();
-                    
-                    // Atualizar estatísticas
                     atualizarEstatisticas();
-                    
-                    // Renderizar tabela
                     renderizarTabela();
                 } else {
                     tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Nenhuma nota encontrada</td></tr>';
                 }
             } catch (error) {
-                console.error('❌ Erro ao carregar notas:', error);
+                console.error('Erro ao carregar notas:', error);
                 tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Erro ao carregar notas</td></tr>';
             }
         }

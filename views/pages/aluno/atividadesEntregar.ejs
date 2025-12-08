@@ -120,12 +120,12 @@
                         <div class="btn-group w-100" role="group">
                             <input type="radio" class="btn-check" name="tipoEntrega" id="tipoTexto" value="texto" checked>
                             <label class="btn btn-outline-primary" for="tipoTexto">
-                                <i class="fas fa-keyboard me-2"></i>Texto
+                                <i class="fa fa-keyboard me-2"></i>Texto
                             </label>
 
                             <input type="radio" class="btn-check" name="tipoEntrega" id="tipoArquivo" value="arquivo">
                             <label class="btn btn-outline-primary" for="tipoArquivo">
-                                <i class="fas fa-file me-2"></i>Arquivo
+                                <i class="fa fa-file me-2"></i>Arquivo
                             </label>
                         </div>
                     </div>
@@ -137,7 +137,7 @@
                         <!-- Campo de Texto -->
                         <div id="campoTexto" class="mb-3">
                             <label for="textoResposta" class="form-label fw-bold">
-                                <i class="fas fa-edit me-2"></i>Sua Resposta
+                                <i class="fa fa-edit me-2"></i>Sua Resposta
                             </label>
                             <textarea 
                                 class="form-control" 
@@ -147,7 +147,7 @@
                                 placeholder="Digite sua resposta aqui..."
                             ></textarea>
                             <div class="form-text">
-                                <i class="fas fa-info-circle me-1"></i>
+                                <i class="fa fa-info-circle me-1"></i>
                                 Escreva sua resposta de forma clara e objetiva.
                             </div>
                         </div>
@@ -155,7 +155,7 @@
                         <!-- Campo de Arquivo -->
                         <div id="campoArquivo" class="mb-3" style="display: none;">
                             <label for="arquivoAtividade" class="form-label fw-bold">
-                                <i class="fas fa-upload me-2"></i>Selecione o Arquivo
+                                <i class="fa fa-upload me-2"></i>Selecione o Arquivo
                             </label>
                             <input 
                                 type="file" 
@@ -165,18 +165,18 @@
                                 accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
                             >
                             <div class="form-text">
-                                <i class="fas fa-info-circle me-1"></i>
+                                <i class="fa fa-info-circle me-1"></i>
                                 Formatos aceitos: PDF, DOC, DOCX, TXT, JPG, PNG (máx. 10MB)
                             </div>
                             <div id="arquivoAtualInfo" class="alert alert-success mt-2" style="display: none;">
-                                <i class="fas fa-check-circle me-2"></i>
+                                <i class="fa fa-check-circle me-2"></i>
                                 <strong>Arquivo atual:</strong> <span id="nomeArquivoAtual"></span>
                             </div>
                         </div>
 
                         <!-- Entrega Já Existente -->
                         <div id="entregaExistenteInfo" class="alert alert-warning" style="display: none;">
-                            <i class="fas fa-info-circle me-2"></i>
+                            <i class="fa fa-info-circle me-2"></i>
                             <strong>Você já enviou esta atividade.</strong> 
                             <span id="tipoEntregaAtual"></span>
                             <br>
@@ -186,10 +186,10 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="fas fa-times me-2"></i>Cancelar
+                        <i class="fa fa-times me-2"></i>Cancelar
                     </button>
                     <button type="button" class="btn btn-primary" id="btnEnviarAtividade">
-                        <i class="fas fa-paper-plane me-2"></i>
+                        <i class="fa fa-paper-plane me-2"></i>
                         <span id="textoBtnEnviar">Enviar</span>
                     </button>
                 </div>
@@ -236,7 +236,8 @@
         // Carregar estatísticas
         async function carregarEstatisticas() {
             try {
-                const response = await fetch('/api/aluno/atividades/estatisticas');
+                //URL atualizada
+                const response = await fetch('/aluno/api/estatisticas');
                 const data = await response.json();
 
                 if (data.sucesso && data.dados) {
@@ -249,7 +250,7 @@
                     document.getElementById('statAtrasadas').textContent = stats.total_atrasadas || 0;
                 }
             } catch (error) {
-                console.error('❌ Erro ao carregar estatísticas:', error);
+                console.error('Erro ao carregar estatísticas:', error);
             }
         }
 
@@ -259,7 +260,8 @@
             container.innerHTML = '<div class="text-center py-3"><i class="fa fa-spinner fa-spin"></i> Carregando...</div>';
 
             try {
-                const response = await fetch('/api/aluno/atividades/listar');
+                // URL atualizada
+                const response = await fetch('/aluno/api/atividades');
                 const data = await response.json();
 
                 if (data.sucesso && data.dados) {
@@ -272,7 +274,7 @@
                     container.innerHTML = '<div class="alert alert-info">Nenhuma atividade encontrada.</div>';
                 }
             } catch (error) {
-                console.error('❌ Erro ao carregar atividades:', error);
+                console.error('Erro ao carregar atividades:', error);
                 container.innerHTML = '<div class="alert alert-danger">Erro ao carregar atividades.</div>';
             }
         }
@@ -355,17 +357,13 @@
         // Abrir modal de entrega
         async function abrirModalEntrega(id_atividade) {
             try {
-                console.log('📂 Abrindo modal para atividade:', id_atividade);
-                
-                const response = await fetch(`/api/aluno/atividades/buscar/${id_atividade}`);
+                //URL atualizada
+                const response = await fetch(`/aluno/api/atividades/${id_atividade}`);
                 const data = await response.json();
-
-                console.log('📦 Resposta da API:', data);
 
                 if (data.sucesso) {
                     atividadeAtual = data.dados;
                     
-                    // Preenche informações
                     document.getElementById('tituloAtividade').textContent = atividadeAtual.titulo;
                     document.getElementById('disciplinaAtividade').textContent = atividadeAtual.disciplina;
                     document.getElementById('turmaAtividade').textContent = atividadeAtual.turma;
@@ -374,14 +372,12 @@
                     document.getElementById('idAtividade').value = atividadeAtual.id_atividade;
                     document.getElementById('idEntrega').value = atividadeAtual.id_entrega || '';
 
-                    // Reseta campos
                     document.getElementById('campoTexto').style.display = 'block';
                     document.getElementById('campoArquivo').style.display = 'none';
                     document.getElementById('tipoTexto').checked = true;
                     document.getElementById('textoResposta').value = '';
                     document.getElementById('arquivoAtualInfo').style.display = 'none';
 
-                    // Se já existe entrega
                     if (atividadeAtual.id_entrega) {
                         document.getElementById('entregaExistenteInfo').style.display = 'block';
                         document.getElementById('textoBtnEnviar').textContent = 'Reenviar';
@@ -411,7 +407,7 @@
                     alert('Erro ao carregar atividade: ' + data.erro);
                 }
             } catch (error) {
-                console.error('❌ Erro ao abrir modal:', error);
+                console.error('Erro ao abrir modal:', error);
                 alert('Erro ao carregar atividade');
             }
         }
@@ -429,7 +425,6 @@
                 
                 formData.append('tipo_entrega', tipoEntrega);
 
-                // Validações
                 if (tipoEntrega === 'texto') {
                     const texto = document.getElementById('textoResposta').value.trim();
                     if (!texto) {
@@ -446,23 +441,17 @@
                     }
                 }
 
-                // Desabilita botão e mostra loading
                 btn.disabled = true;
                 btnIcon.className = 'fa fa-spinner fa-spin me-2';
                 btnSpan.textContent = 'Enviando...';
 
-                console.log('📤 Enviando atividade...', {
-                    id_atividade: formData.get('id_atividade'),
-                    tipo_entrega: formData.get('tipo_entrega')
-                });
-
-                const response = await fetch('/api/aluno/atividades/entregar', {
+                //URL atualizada
+                const response = await fetch('/aluno/api/atividades/entregar', {
                     method: 'POST',
                     body: formData
                 });
 
                 const data = await response.json();
-                console.log('📥 Resposta do servidor:', data);
 
                 if (data.sucesso) {
                     alert(data.mensagem);
@@ -475,12 +464,11 @@
                 }
 
             } catch (error) {
-                console.error('❌ Erro ao enviar atividade:', error);
-                alert('Erro ao enviar atividade. Verifique o console para mais detalhes.');
+                console.error('Erro ao enviar atividade:', error);
+                alert('Erro ao enviar atividade.');
             } finally {
-                // Restaura botão
                 btn.disabled = false;
-                btnIcon.className = 'fas fa-paper-plane me-2';
+                btnIcon.className = 'fa fa-paper-plane me-2';
                 btnSpan.textContent = textoOriginal;
             }
         }
