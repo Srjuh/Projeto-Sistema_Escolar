@@ -4,7 +4,7 @@ const alunoModel = require('../models/alunoModel');
 function verificarSessao(req, res) {
     const id_aluno = req.session?.usuario?.id_aluno;
     if (!id_aluno) {
-        console.warn('⚠️ Tentativa de acesso sem sessão de aluno');
+        console.warn('Tentativa de acesso sem sessão de aluno');
         return null;
     }
     return id_aluno;
@@ -27,7 +27,7 @@ module.exports = {
             res.render('pages/aluno/alunoHome', { usuario });
         
         } catch (error) {
-            console.error('❌ Erro ao carregar home do aluno:', error);
+            console.error('Erro ao carregar home do aluno:', error);
                 res.redirect('/login');
         }
     },
@@ -48,7 +48,7 @@ module.exports = {
             res.render('pages/aluno/quadroNotasAlunos', { usuario });
         
         } catch (error) {
-            console.error('❌ Erro ao carregar quadro de notas:', error);
+            console.error('Erro ao carregar quadro de notas:', error);
                 res.redirect('/login');
         }
     }

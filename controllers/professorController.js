@@ -6,7 +6,7 @@ const disciplinaModel = require('../models/disciplinaModel');
 function verificarSessao(req, res) {
     const id_professor = req.session?.usuario?.id_professor;
     if (!id_professor) {
-        console.warn('⚠️ Tentativa de acesso sem sessão de professor');
+        console.warn('Tentativa de acesso sem sessão de professor');
         return null;
     }
     return id_professor;
@@ -16,7 +16,7 @@ module.exports = {
     // Renderizar home do professor
     async home(req, res) {
         try {
-            console.log("📋 Sessão:", req.session);
+            console.log("Sessão:", req.session);
 
             // Verifica a sessão do professor
             const id_professor = req.session?.usuario?.id_professor || req.query.id_professor;
@@ -29,7 +29,7 @@ module.exports = {
                 res.render('pages/professor/professorHome', { turmas });
         
         } catch (error) {
-            console.error('❌ Erro ao carregar painel do professor:', error);
+            console.error('Erro ao carregar painel do professor:', error);
                 res.render('pages/professor/professorHome', { turmas: [] });
         }
     },
