@@ -95,9 +95,9 @@ class TurmaModel {
             ORDER BY t.nome, d.nome
         `;
         
-        console.log('📊 SQL executando para professor:', id_professor);
+        console.log('SQL executando para professor:', id_professor);
         return db.ExecutaComando(sql, [id_professor]).then(r => {
-            console.log('✅ Resultado da query:', r);
+            console.log('Resultado da query:', r);
             return r;
         });
     }

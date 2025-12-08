@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const alunoNotasModel = require('../models/alunoNotasModel');
+const alunoNotasModel = require('../models/alunoModel');
 
 // Buscar notas do aluno logado
 router.get('/notas', async (req, res) => {

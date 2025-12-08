@@ -40,7 +40,7 @@ class UsuarioModel {
         
         const result = await db.ExecutaComando(sql, [email, senha]);
         
-        console.log('📊 Resultado COMPLETO do banco:', JSON.stringify(result, null, 2));
+        console.log('Resultado COMPLETO do banco:', JSON.stringify(result, null, 2));
         
         if (result.length > 0) {
             console.log('✅ Usuário encontrado:', result[0]);
@@ -89,8 +89,8 @@ class UsuarioModel {
     async buscarAlunoPorUsuario(id_usuario) {
         const sql = `SELECT * FROM aluno WHERE id_aluno = ?`;
         const result = await db.ExecutaComando(sql, [id_usuario]);
-        console.log('🔍 Buscando aluno com id_usuario:', id_usuario);
-        console.log('📊 Resultado da busca de aluno:', result);
+        console.log('Buscando aluno com id_usuario:', id_usuario);
+        console.log('Resultado da busca de aluno:', result);
         return result.length > 0 ? result[0] : null;
     }
 }
