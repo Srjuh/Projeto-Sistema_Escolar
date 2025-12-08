@@ -1,0 +1,446 @@
+<%- include('../../partials/head') %>
+
+<body>
+    <%- include('../../partials/navbar') %>
+
+    <div class="container py-5">
+        <div class="mb-3">
+            <a href="/professor" class="btn btn-outline-primary">
+                <i class="fa fa-arrow-left me-2"></i>Voltar
+            </a>
+        </div>
+
+        <h1 class="mb-4 text-center">Corrigir Atividades</h1>
+
+        <!-- Filtros -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0 text-white"><i class="fa fa-filter me-2"></i>Filtros</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-5">
+                        <label for="filtroTurma" class="form-label">Turma</label>
+                        <select class="form-select" id="filtroTurma">
+                            <option value="">Todas as turmas</option>
+                            <% if (turmas && turmas.length > 0) { %>
+                                <% const turmasUnicas = [...new Map(turmas.map(t => [t.id_turma, t])).values()]; %>
+                                <% turmasUnicas.forEach(t => { %>
+                                    <option value="<%= t.id_turma %>"><%= t.nome_turma %></option>
+                                <% }); %>
+                            <% } %>
+                        </select>
+                    </div>
+                    <div class="col-md-5">
+                        <label for="filtroDisciplina" class="form-label">Disciplina</label>
+                        <select class="form-select" id="filtroDisciplina">
+                            <option value="">Todas as disciplinas</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button class="btn btn-primary w-100" id="btnFiltrar">
+                            <i class="fa fa-search me-1"></i>Filtrar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lista de Atividades -->
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0 text-white"><i class="fa fa-list me-2"></i>Atividades com Entregas</h5>
+            </div>
+            <div class="card-body">
+                <div id="listaAtividades">
+                    <div class="text-center py-4">
+                        <i class="fa fa-spinner fa-spin fa-2x"></i>
+                        <p class="mt-2">Carregando atividades...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Área de Entregas -->
+        <div class="card mt-4" id="areaEntregas" style="display: none;">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 text-white"><i class="fa fa-file-alt me-2"></i>Entregas: <span id="tituloAtividade"></span></h5>
+                <button class="btn btn-light btn-sm" onclick="fecharEntregas()">
+                    <i class="fa fa-times"></i> Fechar
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3" id="estatisticas"></div>
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Aluno</th>
+                                <th>Data Envio</th>
+                                <th>Tipo</th>
+                                <th>Nota</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="corpoTabelaEntregas"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Correção -->
+    <div class="modal fade" id="modalCorrigir" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title text-white"><i class="fa fa-edit me-2"></i>Corrigir Entrega</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formCorrigir">
+                        <input type="hidden" id="idEntrega">
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label"><strong>Aluno:</strong></label>
+                                <p id="nomeAluno" class="form-control-plaintext"></p>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label"><strong>Data de Envio:</strong></label>
+                                <p id="dataEnvio" class="form-control-plaintext"></p>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Entrega:</strong></label>
+                            <div id="conteudoEntrega" class="border rounded p-3 bg-light"></div>
+                        </div>
+
+                        <hr>
+
+                        <div class="mb-3">
+                            <label for="notaCorrecao" class="form-label"><strong>Nota (0-10):</strong></label>
+                            <input type="number" class="form-control" id="notaCorrecao" 
+                                   min="0" max="10" step="0.1" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="feedbackCorrecao" class="form-label"><strong>Feedback:</strong></label>
+                            <textarea class="form-control" id="feedbackCorrecao" rows="4" 
+                                      placeholder="Deixe um feedback para o aluno..."></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btnSalvarCorrecao">
+                        <i class="fa fa-save me-2"></i>Salvar Correção
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <%- include('../../partials/footer') %>
+
+    <script>
+        let atividadeAtualId = null;
+        let todasTurmas = <%= JSON.stringify(turmas || []) %>;
+        let modalCorrigir = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            modalCorrigir = new bootstrap.Modal(document.getElementById('modalCorrigir'));
+            
+            carregarAtividades();
+            configurarEventListeners();
+        });
+
+        function configurarEventListeners() {
+            document.getElementById('filtroTurma').addEventListener('change', atualizarDisciplinas);
+            document.getElementById('btnFiltrar').addEventListener('click', carregarAtividades);
+            document.getElementById('btnSalvarCorrecao').addEventListener('click', salvarCorrecao);
+        }
+
+        function atualizarDisciplinas() {
+            const idTurma = document.getElementById('filtroTurma').value;
+            const selectDisciplina = document.getElementById('filtroDisciplina');
+            
+            selectDisciplina.innerHTML = '<option value="">Todas as disciplinas</option>';
+
+            if (!idTurma) return;
+
+            const disciplinasFiltradas = todasTurmas.filter(t => t.id_turma == idTurma);
+            const disciplinasUnicas = [...new Map(disciplinasFiltradas.map(d => [d.id_disciplina, d])).values()];
+
+            disciplinasUnicas.forEach(d => {
+                selectDisciplina.innerHTML += `<option value="${d.id_disciplina}">${d.nome_disciplina}</option>`;
+            });
+        }
+
+        async function carregarAtividades() {
+            const container = document.getElementById('listaAtividades');
+            container.innerHTML = '<div class="text-center py-4"><i class="fa fa-spinner fa-spin fa-2x"></i><p class="mt-2">Carregando...</p></div>';
+
+            const idTurma = document.getElementById('filtroTurma').value;
+            const idDisciplina = document.getElementById('filtroDisciplina').value;
+
+            let url = '/professor/api/corrigir/atividades';
+            const params = [];
+            if (idTurma) params.push(`id_turma=${idTurma}`);
+            if (idDisciplina) params.push(`id_disciplina=${idDisciplina}`);
+            if (params.length > 0) url += '?' + params.join('&');
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.sucesso && data.dados?.length > 0) {
+                    renderizarAtividades(data.dados);
+                } else {
+                    container.innerHTML = '<div class="alert alert-info mb-0"><i class="fa fa-info-circle me-2"></i>Nenhuma atividade com entregas encontrada.</div>';
+                }
+            } catch (error) {
+                console.error('Erro ao carregar atividades:', error);
+                container.innerHTML = '<div class="alert alert-danger mb-0">Erro ao carregar atividades.</div>';
+            }
+        }
+
+        function renderizarAtividades(atividades) {
+            const container = document.getElementById('listaAtividades');
+            
+            let html = '<div class="list-group">';
+            atividades.forEach(atividade => {
+                const dataEntrega = new Date(atividade.data_entrega).toLocaleDateString('pt-BR');
+                const todasCorrigidas = atividade.pendentes_correcao == 0;
+
+                html += `
+                    <a href="#" class="list-group-item list-group-item-action" 
+                       onclick="carregarEntregas(${atividade.id_atividade}, '${atividade.titulo.replace(/'/g, "\\'")}'); return false;">
+                        <div class="d-flex w-100 justify-content-between align-items-center">
+                            <div>
+                                <h5 class="mb-1">${atividade.titulo}</h5>
+                                <p class="mb-1 text-muted">
+                                    <i class="fa fa-book me-1"></i>${atividade.disciplina} - 
+                                    <i class="fa fa-users me-1"></i>${atividade.turma} -
+                                    <i class="fa fa-calendar me-1"></i>Entrega: ${dataEntrega}
+                                </p>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-info">${atividade.total_entregas} entregas</span>
+                                ${todasCorrigidas 
+                                    ? '<span class="badge bg-success">Todas corrigidas</span>'
+                                    : `<span class="badge bg-warning text-dark">${atividade.pendentes_correcao} pendentes</span>`}
+                            </div>
+                        </div>
+                    </a>
+                `;
+            });
+            html += '</div>';
+            
+            container.innerHTML = html;
+        }
+
+        async function carregarEntregas(id_atividade, titulo) {
+            atividadeAtualId = id_atividade;
+            document.getElementById('tituloAtividade').textContent = titulo;
+            document.getElementById('areaEntregas').style.display = 'block';
+            
+            const tbody = document.getElementById('corpoTabelaEntregas');
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center"><i class="fa fa-spinner fa-spin"></i> Carregando...</td></tr>';
+
+            try {
+                // ✅ URL atualizada
+                const response = await fetch(`/professor/api/corrigir/entregas/${id_atividade}`);
+                const data = await response.json();
+
+                if (data.sucesso && data.dados) {
+                    exibirEstatisticas(data.dados);
+                    renderizarEntregas(data.dados);
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">Erro: ${data.erro}</td></tr>`;
+                }
+            } catch (error) {
+                console.error('Erro ao carregar entregas:', error);
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Erro ao carregar entregas</td></tr>';
+            }
+
+            document.getElementById('areaEntregas').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function exibirEstatisticas(entregas) {
+            const div = document.getElementById('estatisticas');
+            
+            const total = entregas.length;
+            const corrigidas = entregas.filter(e => e.nota !== null).length;
+            const pendentes = total - corrigidas;
+            const notasValidas = entregas.filter(e => e.nota !== null).map(e => parseFloat(e.nota));
+            const media = notasValidas.length > 0 
+                ? (notasValidas.reduce((a, b) => a + b, 0) / notasValidas.length).toFixed(2)
+                : '-';
+
+            div.innerHTML = `
+                <div class="col-md-3">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body text-center">
+                            <h3>${total}</h3>
+                            <p class="mb-0">Total</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body text-center">
+                            <h3>${corrigidas}</h3>
+                            <p class="mb-0">Corrigidas</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-warning text-dark">
+                        <div class="card-body text-center">
+                            <h3>${pendentes}</h3>
+                            <p class="mb-0">Pendentes</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-info text-white">
+                        <div class="card-body text-center">
+                            <h3>${media}</h3>
+                            <p class="mb-0">Média</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderizarEntregas(entregas) {
+            const tbody = document.getElementById('corpoTabelaEntregas');
+            tbody.innerHTML = '';
+
+            if (entregas.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Nenhuma entrega encontrada</td></tr>';
+                return;
+            }
+
+            entregas.forEach(entrega => {
+                const corrigida = entrega.nota !== null;
+                const dataEnvio = new Date(entrega.data_envio).toLocaleString('pt-BR');
+                
+                const tipoEntrega = entrega.arquivo 
+                    ? `<a href="/uploads/${entrega.arquivo}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fa fa-download me-1"></i>Arquivo</a>`
+                    : '<span class="badge bg-secondary">Texto</span>';
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${entrega.nome_aluno}</td>
+                    <td>${dataEnvio}</td>
+                    <td>${tipoEntrega}</td>
+                    <td>
+                        <span class="badge ${corrigida ? 'bg-success' : 'bg-secondary'}">
+                            ${corrigida ? parseFloat(entrega.nota).toFixed(1) : 'N/A'}
+                        </span>
+                    </td>
+                    <td>
+                        ${corrigida 
+                            ? '<span class="badge bg-success"><i class="fa fa-check me-1"></i>Corrigida</span>'
+                            : '<span class="badge bg-warning text-dark"><i class="fa fa-clock me-1"></i>Pendente</span>'}
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" onclick="abrirModalCorrecao(${entrega.id_entrega})">
+                            <i class="fa fa-edit me-1"></i>${corrigida ? 'Rever' : 'Corrigir'}
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function abrirModalCorrecao(id_entrega) {
+            try {
+                // ✅ URL atualizada
+                const response = await fetch(`/professor/api/corrigir/entrega/${id_entrega}`);
+                const data = await response.json();
+
+                if (data.sucesso) {
+                    const entrega = data.dados;
+                    
+                    document.getElementById('idEntrega').value = entrega.id_entrega;
+                    document.getElementById('nomeAluno').textContent = entrega.nome_aluno;
+                    document.getElementById('dataEnvio').textContent = new Date(entrega.data_envio).toLocaleString('pt-BR');
+                    document.getElementById('notaCorrecao').value = entrega.nota || '';
+                    document.getElementById('feedbackCorrecao').value = entrega.feedback || '';
+                    
+                    const divConteudo = document.getElementById('conteudoEntrega');
+                    if (entrega.arquivo) {
+                        divConteudo.innerHTML = `
+                            <a href="/uploads/${entrega.arquivo}" target="_blank" class="btn btn-outline-primary">
+                                <i class="fa fa-download me-2"></i>Baixar Arquivo
+                            </a>
+                        `;
+                    } else if (entrega.texto) {
+                        divConteudo.innerHTML = `<div class="p-2">${entrega.texto}</div>`;
+                    } else {
+                        divConteudo.innerHTML = '<p class="text-muted mb-0">Nenhum conteúdo enviado</p>';
+                    }
+
+                    modalCorrigir.show();
+                } else {
+                    alert('Erro ao carregar entrega: ' + data.erro);
+                }
+            } catch (error) {
+                console.error('Erro ao abrir modal:', error);
+                alert('Erro ao carregar dados da entrega');
+            }
+        }
+
+        async function salvarCorrecao() {
+            const id_entrega = document.getElementById('idEntrega').value;
+            const nota = parseFloat(document.getElementById('notaCorrecao').value);
+            const feedback = document.getElementById('feedbackCorrecao').value;
+
+            if (isNaN(nota) || nota < 0 || nota > 10) {
+                alert('A nota deve estar entre 0 e 10');
+                return;
+            }
+
+            const btn = document.getElementById('btnSalvarCorrecao');
+            
+            try {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fa fa-spinner fa-spin me-2"></i>Salvando...';
+
+                // ✅ URL atualizada
+                const response = await fetch(`/professor/api/corrigir/entrega/${id_entrega}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nota, feedback })
+                });
+
+                const data = await response.json();
+
+                if (data.sucesso) {
+                    alert('Correção salva com sucesso!');
+                    modalCorrigir.hide();
+                    carregarEntregas(atividadeAtualId, document.getElementById('tituloAtividade').textContent);
+                } else {
+                    alert('Erro: ' + data.erro);
+                }
+            } catch (error) {
+                console.error('Erro ao salvar correção:', error);
+                alert('Erro ao salvar correção');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa fa-save me-2"></i>Salvar Correção';
+            }
+        }
+
+        function fecharEntregas() {
+            document.getElementById('areaEntregas').style.display = 'none';
+            atividadeAtualId = null;
+        }
+    </script>
+</body>
+</html>

@@ -25,48 +25,59 @@
                 <h5 class="mb-0 text-white">Minhas Atividades</h5>
             </div>
             <div class="card-body">
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Título</th>
-                            <th>Turma</th>
-                            <th>Disciplina</th>
-                            <th>Data de Entrega</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabelaAtividades">
-                        <!-- JS irá popular -->
-                    </tbody>
-                </table>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Título</th>
+                                <th>Turma</th>
+                                <th>Disciplina</th>
+                                <th>Data de Entrega</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaAtividades">
+                            <tr>
+                                <td colspan="5" class="text-center">
+                                    <i class="fa fa-spinner fa-spin"></i> Carregando...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Modal para criar/editar atividade -->
-    <div class="modal fade" id="modalAtividade" tabindex="-1" aria-labelledby="modalAtividadeLabel" aria-hidden="true">
+    <div class="modal fade" id="modalAtividade" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title text-white" id="modalAtividadeLabel">Nova Atividade</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <form id="formAtividade">
+                        <input type="hidden" id="atividadeId">
                         <div class="mb-3">
                             <label for="titulo" class="form-label">Título</label>
                             <input type="text" class="form-control" id="titulo" name="titulo" required>
                         </div>
                         <div class="mb-3">
+                            <label for="descricao" class="form-label">Descrição</label>
+                            <textarea class="form-control" id="descricao" name="descricao" rows="3"></textarea>
+                        </div>
+                        <div class="mb-3">
                             <label for="turma" class="form-label">Turma</label>
                             <select class="form-select" id="turma" name="turma" required>
-                                <!-- JS irá popular -->
+                                <option value="">Selecione uma turma</option>
                             </select>
                         </div>
                         <div class="mb-3">
                             <label for="disciplina" class="form-label">Disciplina</label>
                             <select class="form-select" id="disciplina" name="disciplina" required>
-                                <!-- JS irá popular -->
+                                <option value="">Selecione uma disciplina</option>
                             </select>
                         </div>
                         <div class="mb-3">
@@ -77,7 +88,9 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" id="btnSalvarAtividade">Salvar</button>
+                    <button type="button" class="btn btn-primary" id="btnSalvarAtividade">
+                        <i class="fa fa-save me-2"></i>Salvar
+                    </button>
                 </div>
             </div>
         </div>
@@ -86,183 +99,217 @@
     <%- include('../../partials/footer') %>
 
     <script>
-        let atividadeEditandoId = null; // Guarda o ID da atividade sendo editada
-        let todasTurmasDisciplinas = []; // Armazena os dados completos
+        let todasTurmasDisciplinas = [];
+        let modalAtividade = null;
 
-        document.addEventListener('DOMContentLoaded', async () => {
-            await carregarTurmasEDisciplinas();
+        document.addEventListener('DOMContentLoaded', () => {
+            modalAtividade = new bootstrap.Modal(document.getElementById('modalAtividade'));
+            
+            carregarTurmasEDisciplinas();
             carregarAtividades();
-
-            document.getElementById('btnNovaAtividade').addEventListener('click', () => {
-                abrirModalAtividade();
-            });
-
-            document.getElementById('btnSalvarAtividade').addEventListener('click', salvarAtividade);
+            configurarEventListeners();
+            configurarDataMinima();
         });
 
-        async function carregarAtividades() {
-            try {
-                const response = await fetch('/api/atividades');
-                const data = await response.json();
-                const tabela = document.getElementById('tabelaAtividades');
-                tabela.innerHTML = '';
+        function configurarEventListeners() {
+            document.getElementById('btnNovaAtividade').addEventListener('click', abrirModalNovo);
+            document.getElementById('btnSalvarAtividade').addEventListener('click', salvarAtividade);
+            document.getElementById('turma').addEventListener('change', function() {
+                popularDisciplinasPorTurma(this.value);
+            });
+        }
 
-                if (data.sucesso && data.dados.length > 0) {
-                    data.dados.forEach(atividade => {
-                        tabela.innerHTML += `
-                            <tr>
-                                <td>${atividade.titulo}</td>
-                                <td>${atividade.nome_turma}</td>
-                                <td>${atividade.nome_disciplina}</td>
-                                <td>${new Date(atividade.data_entrega).toLocaleDateString('pt-BR')}</td>
-                                <td>
-                                    <button class="btn btn-sm btn-warning" onclick="editarAtividade(${atividade.id_atividade})">Editar</button>
-                                    <button class="btn btn-sm btn-danger" onclick="excluirAtividade(${atividade.id_atividade})">Excluir</button>
-                                </td>
-                            </tr>
-                        `;
-                    });
-                } else {
-                    tabela.innerHTML = '<tr><td colspan="5" class="text-center">Nenhuma atividade encontrada</td></tr>';
-                }
-            } catch (error) {
-                console.error('Erro ao carregar atividades:', error);
-            }
+        function configurarDataMinima() {
+            const inputData = document.getElementById('dataEntrega');
+            inputData.min = getDataHoje();
+        }
+
+        function getDataHoje() {
+            const hoje = new Date();
+            return hoje.toISOString().split('T')[0];
+        }
+
+        function formatarDataParaInput(dataISO) {
+            if (!dataISO) return '';
+            return dataISO.split('T')[0];
         }
 
         async function carregarTurmasEDisciplinas() {
             try {
-                console.log('🔄 Carregando turmas e disciplinas...');
-                
-                const resposta = await fetch('/api/atividades/turmas-disciplinas');
-                const data = await resposta.json();
+                //URL atualizada
+                const response = await fetch('/professor/api/atividades/turmas-disciplinas');
+                const data = await response.json();
 
-                console.log('📦 Resposta completa da API:', data);
-
-                if (data.sucesso && data.turmas && data.turmas.length > 0) {
-                    // Armazena os dados completos globalmente
+                if (data.sucesso && data.turmas?.length > 0) {
                     todasTurmasDisciplinas = data.turmas;
-                    
-                    console.log('📚 Total de registros recebidos:', data.turmas.length);
-                    console.log('📝 Primeiros 3 registros:', data.turmas.slice(0, 3));
-
-                    // Popula apenas as turmas inicialmente
                     popularTurmas();
                 } else {
-                    console.warn('⚠️ Nenhuma turma/disciplina retornada ou erro:', data);
                     document.getElementById('turma').innerHTML = '<option disabled>Nenhuma turma encontrada</option>';
                     document.getElementById('disciplina').innerHTML = '<option disabled>Nenhuma disciplina encontrada</option>';
                 }
             } catch (error) {
-                console.error('❌ Erro ao carregar turmas e disciplinas:', error);
+                console.error('Erro ao carregar turmas e disciplinas:', error);
             }
         }
 
         function popularTurmas() {
             const turmaSelect = document.getElementById('turma');
-            turmaSelect.innerHTML = '';
-
+            
             // Extrair turmas únicas
             const turmasMap = new Map();
             todasTurmasDisciplinas.forEach(item => {
                 if (!turmasMap.has(item.id_turma)) {
-                    turmasMap.set(item.id_turma, {
-                        id_turma: item.id_turma,
-                        nome_turma: item.nome_turma
-                    });
+                    turmasMap.set(item.id_turma, item.nome_turma);
                 }
             });
 
-            const turmasUnicas = Array.from(turmasMap.values());
-            console.log('🎯 Turmas únicas extraídas:', turmasUnicas);
-
-            turmasUnicas.forEach(turma => {
-                turmaSelect.innerHTML += `<option value="${turma.id_turma}">${turma.nome_turma}</option>`;
+            turmaSelect.innerHTML = '<option value="">Selecione uma turma</option>';
+            turmasMap.forEach((nome, id) => {
+                turmaSelect.innerHTML += `<option value="${id}">${nome}</option>`;
             });
-
-            // Popula disciplinas da primeira turma automaticamente
-            if (turmasUnicas.length > 0) {
-                popularDisciplinasPorTurma(turmasUnicas[0].id_turma);
-            }
         }
 
         function popularDisciplinasPorTurma(id_turma) {
             const disciplinaSelect = document.getElementById('disciplina');
-            disciplinaSelect.innerHTML = '';
+            disciplinaSelect.innerHTML = '<option value="">Selecione uma disciplina</option>';
 
-            console.log('🔍 Filtrando disciplinas para turma:', id_turma);
+            if (!id_turma) return;
 
-            // Filtra disciplinas da turma selecionada
-            const disciplinasDaTurma = todasTurmasDisciplinas
+            // Filtra disciplinas da turma e remove duplicatas
+            const disciplinasMap = new Map();
+            todasTurmasDisciplinas
                 .filter(item => item.id_turma == id_turma)
-                .map(item => ({
-                    id_disciplina: item.id_disciplina,
-                    nome_disciplina: item.nome_disciplina
-                }));
-
-            // Remove duplicatas
-            const disciplinasUnicas = disciplinasDaTurma.filter((disc, index, self) =>
-                index === self.findIndex(d => d.id_disciplina === disc.id_disciplina)
-            );
-
-            console.log('🎯 Disciplinas da turma:', disciplinasUnicas);
-
-            if (disciplinasUnicas.length > 0) {
-                disciplinasUnicas.forEach(disciplina => {
-                    disciplinaSelect.innerHTML += `<option value="${disciplina.id_disciplina}">${disciplina.nome_disciplina}</option>`;
+                .forEach(item => {
+                    if (!disciplinasMap.has(item.id_disciplina)) {
+                        disciplinasMap.set(item.id_disciplina, item.nome_disciplina);
+                    }
                 });
-            } else {
-                disciplinaSelect.innerHTML = '<option disabled>Nenhuma disciplina disponível</option>';
+
+            disciplinasMap.forEach((nome, id) => {
+                disciplinaSelect.innerHTML += `<option value="${id}">${nome}</option>`;
+            });
+        }
+
+        async function carregarAtividades() {
+            const tabela = document.getElementById('tabelaAtividades');
+            tabela.innerHTML = '<tr><td colspan="5" class="text-center"><i class="fa fa-spinner fa-spin"></i> Carregando...</td></tr>';
+
+            try {
+                //URL atualizada
+                const response = await fetch('/professor/api/atividades');
+                const data = await response.json();
+
+                if (data.sucesso && data.dados?.length > 0) {
+                    tabela.innerHTML = '';
+                    data.dados.forEach(atividade => {
+                        const dataEntrega = new Date(atividade.data_entrega).toLocaleDateString('pt-BR');
+                        tabela.innerHTML += `
+                            <tr>
+                                <td>${atividade.titulo}</td>
+                                <td>${atividade.nome_turma}</td>
+                                <td>${atividade.nome_disciplina}</td>
+                                <td>${dataEntrega}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-warning" onclick="editarAtividade(${atividade.id_atividade})">
+                                        <i class="fa fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-danger" onclick="excluirAtividade(${atividade.id_atividade})">
+                                        <i class="fa fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                } else {
+                    tabela.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Nenhuma atividade encontrada</td></tr>';
+                }
+            } catch (error) {
+                console.error('Erro ao carregar atividades:', error);
+                tabela.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Erro ao carregar atividades</td></tr>';
             }
         }
 
-        // Event listener para quando mudar a turma
-        document.addEventListener('DOMContentLoaded', function() {
-            carregarTurmasEDisciplinas();
-            carregarAtividades();
-
-            // Quando mudar a turma, atualiza as disciplinas
-            document.getElementById('turma').addEventListener('change', function() {
-                const id_turma = this.value;
-                console.log('🔄 Turma alterada para:', id_turma);
-                popularDisciplinasPorTurma(id_turma);
-            });
-        });
-
-        function abrirModalAtividade() {
-            atividadeEditandoId = null; // Reset: modo criação
+        function abrirModalNovo() {
             document.getElementById('formAtividade').reset();
+            document.getElementById('atividadeId').value = '';
             document.getElementById('modalAtividadeLabel').textContent = 'Nova Atividade';
-            const modal = new bootstrap.Modal(document.getElementById('modalAtividade'));
-            modal.show();
+            document.getElementById('disciplina').innerHTML = '<option value="">Selecione uma disciplina</option>';
+            configurarDataMinima();
+            modalAtividade.show();
+        }
+
+        async function editarAtividade(id) {
+            try {
+                //URL atualizada
+                const response = await fetch(`/professor/api/atividades/${id}`);
+                const data = await response.json();
+
+                if (data.sucesso) {
+                    const atividade = data.dados;
+
+                    document.getElementById('atividadeId').value = atividade.id_atividade;
+                    document.getElementById('titulo').value = atividade.titulo;
+                    document.getElementById('descricao').value = atividade.descricao || '';
+                    document.getElementById('turma').value = atividade.id_turma;
+                    
+                    popularDisciplinasPorTurma(atividade.id_turma);
+                    
+                    // Aguarda um tick para o select ser populado
+                    setTimeout(() => {
+                        document.getElementById('disciplina').value = atividade.id_disciplina;
+                    }, 50);
+                    
+                    document.getElementById('dataEntrega').value = formatarDataParaInput(atividade.data_entrega);
+                    document.getElementById('modalAtividadeLabel').textContent = 'Editar Atividade';
+                    
+                    configurarDataMinima();
+                    modalAtividade.show();
+                } else {
+                    alert('Erro ao carregar atividade: ' + data.erro);
+                }
+            } catch (error) {
+                console.error('Erro ao carregar atividade:', error);
+                alert('Erro ao carregar atividade');
+            }
         }
 
         async function salvarAtividade() {
-            const titulo = document.getElementById('titulo').value;
-            const turma = document.getElementById('turma').value;
-            const disciplina = document.getElementById('disciplina').value;
-            const dataEntrega = document.getElementById('dataEntrega').value;
+            const id = document.getElementById('atividadeId').value;
+            const titulo = document.getElementById('titulo').value.trim();
+            const descricao = document.getElementById('descricao').value.trim();
+            const id_turma = document.getElementById('turma').value;
+            const id_disciplina = document.getElementById('disciplina').value;
+            const data_entrega = document.getElementById('dataEntrega').value;
 
-            const body = {
-                titulo,
-                descricao: '',
-                id_turma: turma,
-                id_disciplina: disciplina,
-                data_entrega: dataEntrega
-            };
+            // Validações
+            if (!titulo || !id_turma || !id_disciplina || !data_entrega) {
+                alert('Preencha todos os campos obrigatórios.');
+                return;
+            }
 
+            if (data_entrega < getDataHoje()) {
+                alert('A data de entrega deve ser de hoje ou futura.');
+                return;
+            }
+
+            const body = { titulo, descricao, id_turma, id_disciplina, data_entrega };
+            const btn = document.getElementById('btnSalvarAtividade');
+            
             try {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fa fa-spinner fa-spin me-2"></i>Salvando...';
+
                 let response;
-                if (atividadeEditandoId) {
-                    // Modo edição
-                    response = await fetch(`/api/atividades/${atividadeEditandoId}`, {
+                if (id) {
+                    //URL atualizada - Edição
+                    response = await fetch(`/professor/api/atividades/${id}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(body)
                     });
                 } else {
-                    // Modo criação
-                    response = await fetch('/api/atividades', {
+                    //URL atualizada - Criação
+                    response = await fetch('/professor/api/atividades', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(body)
@@ -272,153 +319,42 @@
                 const data = await response.json();
 
                 if (data.sucesso) {
-                    alert(atividadeEditandoId ? 'Atividade atualizada com sucesso!' : 'Atividade criada com sucesso!');
+                    alert(id ? 'Atividade atualizada com sucesso!' : 'Atividade criada com sucesso!');
+                    modalAtividade.hide();
                     carregarAtividades();
-                    const modal = bootstrap.Modal.getInstance(document.getElementById('modalAtividade'));
-                    modal.hide();
                 } else {
                     alert('Erro: ' + data.erro);
                 }
             } catch (error) {
                 console.error('Erro ao salvar atividade:', error);
-            }
-        }
-
-        async function editarAtividade(id) {
-            try {
-                const response = await fetch(`/api/atividades/${id}`);
-                const data = await response.json();
-
-                if (data.sucesso) {
-                    const atividade = data.dados;
-
-                    await carregarTurmasEDisciplinas();
-
-                    atividadeEditandoId = id; // Marca como modo edição
-                    document.getElementById('titulo').value = atividade.titulo;
-                    document.getElementById('turma').value = atividade.id_turma;
-                    document.getElementById('disciplina').value = atividade.id_disciplina;
-                    document.getElementById('dataEntrega').value = atividade.data_entrega.split('T')[0];
-                    document.getElementById('modalAtividadeLabel').textContent = 'Editar Atividade';
-
-                    const modal = new bootstrap.Modal(document.getElementById('modalAtividade'));
-                    modal.show();
-                } else {
-                    alert('Erro ao carregar atividade: ' + data.erro);
-                }
-            } catch (error) {
-                console.error('Erro ao carregar atividade:', error);
+                alert('Erro ao salvar atividade');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa fa-save me-2"></i>Salvar';
             }
         }
 
         async function excluirAtividade(id) {
-            if (confirm('Tem certeza que deseja excluir esta atividade?')) {
-                try {
-                    const response = await fetch(`/api/atividades/${id}`, { method: 'DELETE' });
-                    const data = await response.json();
-
-                    if (data.sucesso) {
-                        alert('Atividade excluída com sucesso!');
-                        carregarAtividades();
-                    } else {
-                        alert('Erro ao excluir: ' + data.erro);
-                    }
-                } catch (error) {
-                    console.error('Erro ao excluir atividade:', error);
-                }
-            }
-        }
-
-        // Função para formatar data para input type="date" (YYYY-MM-DD)
-        function formatarDataParaInput(dataISO) {
-            if (!dataISO) return '';
-            const data = new Date(dataISO);
-            const ano = data.getFullYear();
-            const mes = String(data.getMonth() + 1).padStart(2, '0');
-            const dia = String(data.getDate()).padStart(2, '0');
-            return `${ano}-${mes}-${dia}`;
-        }
-
-        // Função para obter a data de hoje no formato YYYY-MM-DD
-        function getDataHoje() {
-            const hoje = new Date();
-            const ano = hoje.getFullYear();
-            const mes = String(hoje.getMonth() + 1).padStart(2, '0');
-            const dia = String(hoje.getDate()).padStart(2, '0');
-            return `${ano}-${mes}-${dia}`;
-        }
-
-        // Inicialização
-        document.addEventListener('DOMContentLoaded', () => {
-            carregarAtividades();
-            carregarTurmasEDisciplinas();
-
-            // ✅ Define a data mínima como hoje nos inputs de data
-            const inputDataCriar = document.getElementById('dataEntrega');
-            const inputDataEditar = document.getElementById('editDataEntrega');
-            const dataHoje = getDataHoje();
-            
-            if (inputDataCriar) {
-                inputDataCriar.min = dataHoje;
-            }
-            if (inputDataEditar) {
-                inputDataEditar.min = dataHoje;
+            if (!confirm('Tem certeza que deseja excluir esta atividade?\nTodas as entregas associadas também serão excluídas.')) {
+                return;
             }
 
-            // ✅ Validação extra ao submeter (criar)
-            document.getElementById('formCriarAtividade').addEventListener('submit', function(e) {
-                const dataSelecionada = inputDataCriar.value;
-                if (dataSelecionada < dataHoje) {
-                    e.preventDefault();
-                    alert('A data de entrega deve ser de hoje ou futura.');
-                    inputDataCriar.focus();
-                    return false;
-                }
-            });
-
-            // ✅ Validação extra ao submeter (editar)
-            document.getElementById('formEditarAtividade').addEventListener('submit', function(e) {
-                const dataSelecionada = inputDataEditar.value;
-                if (dataSelecionada < dataHoje) {
-                    e.preventDefault();
-                    alert('A data de entrega deve ser de hoje ou futura.');
-                    inputDataEditar.focus();
-                    return false;
-                }
-            });
-        });
-
-        // Abrir modal de edição
-        async function abrirModalEdicao(id) {
             try {
-                const response = await fetch(`/api/professor/atividades/${id}`);
+                //URL atualizada
+                const response = await fetch(`/professor/api/atividades/${id}`, { 
+                    method: 'DELETE' 
+                });
                 const data = await response.json();
 
                 if (data.sucesso) {
-                    const atividade = data.dados;
-                    
-                    document.getElementById('editAtividadeId').value = atividade.id_atividade;
-                    document.getElementById('editTitulo').value = atividade.titulo;
-                    document.getElementById('editDescricao').value = atividade.descricao || '';
-                    document.getElementById('editDataEntrega').value = formatarDataParaInput(atividade.data_entrega);
-                    document.getElementById('editTurma').value = atividade.id_turma;
-                    
-                    // Carrega disciplinas da turma selecionada
-                    await carregarDisciplinasPorTurmaEdicao(atividade.id_turma);
-                    document.getElementById('editDisciplina').value = atividade.id_disciplina;
-
-                    // ✅ Reaplica a data mínima ao abrir o modal de edição
-                    const inputDataEditar = document.getElementById('editDataEntrega');
-                    inputDataEditar.min = getDataHoje();
-
-                    const modal = new bootstrap.Modal(document.getElementById('modalEditarAtividade'));
-                    modal.show();
+                    alert('Atividade excluída com sucesso!');
+                    carregarAtividades();
                 } else {
-                    alert('Erro ao carregar atividade: ' + data.erro);
+                    alert('Erro ao excluir: ' + data.erro);
                 }
             } catch (error) {
-                console.error('Erro ao carregar atividade:', error);
-                alert('Erro ao carregar atividade');
+                console.error('Erro ao excluir atividade:', error);
+                alert('Erro ao excluir atividade');
             }
         }
     </script>
