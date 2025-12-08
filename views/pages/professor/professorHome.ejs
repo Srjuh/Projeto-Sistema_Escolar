@@ -73,22 +73,28 @@
     <%- include('../../partials/footer') %>
 
     <script>
-        document.getElementById('btnToggleTurmas').addEventListener('click', function () {
+        document.getElementById('btnToggleTurmas').addEventListener('click', function() {
             const turmasDiv = document.getElementById('turmasContainer');
-            if (turmasDiv.style.display === 'none') {
-                turmasDiv.style.display = 'block';
-                this.innerHTML = '<i class="fa fa-eye-slash"></i> Ocultar minhas turmas';
-            } else {
-                turmasDiv.style.display = 'none';
-                this.innerHTML = '<i class="fa fa-eye"></i> Exibir minhas turmas';
-            }
+            const isHidden = turmasDiv.style.display === 'none';
+            
+            turmasDiv.style.display = isHidden ? 'block' : 'none';
+            this.innerHTML = isHidden 
+                ? '<i class="fa fa-eye-slash"></i> Ocultar minhas turmas'
+                : '<i class="fa fa-eye"></i> Exibir minhas turmas';
         });
     </script>
+
     <style>
         .card-hover:hover {
-            box-shadow: 0 0 0.5rem #007bff55;
-            transform: translateY(-2px) scale(1.02);
-            transition: all 0.2s;
+            box-shadow: 0 0 1rem rgba(0, 123, 255, 0.3);
+            transform: translateY(-5px) scale(1.02);
+            transition: all 0.3s ease;
+        }
+        .card-body i {
+            transition: transform 0.3s ease;
+        }
+        .card-hover:hover i {
+            transform: scale(1.1);
         }
     </style>
 </body>

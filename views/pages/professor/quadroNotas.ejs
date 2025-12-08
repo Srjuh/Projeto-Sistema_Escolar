@@ -1,6 +1,5 @@
 <%- include('../../partials/head') %>
 
-<!-- Substituir html2pdf por jsPDF + autoTable -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 
@@ -59,7 +58,7 @@
         </div>
 
         <!-- Tabela de Notas -->
-        <div class="card" id="areaImpressao">
+        <div class="card">
             <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                 <h5 class="mb-0 text-white"><i class="fa fa-table me-2"></i>Notas dos Alunos</h5>
                 <span class="badge bg-light text-dark" id="mediaTurma" style="display: none;">Média da Turma: -</span>
@@ -80,7 +79,9 @@
                         </thead>
                         <tbody id="corpoTabelaNotas">
                             <tr>
-                                <td colspan="7" class="text-center text-muted">Selecione uma turma para visualizar as notas</td>
+                                <td colspan="7" class="text-center text-muted">
+                                    Selecione uma turma para visualizar as notas
+                                </td>
                             </tr>
                         </tbody>
                     </table>
@@ -89,16 +90,21 @@
         </div>
     </div>
 
-    <!-- Modal para configurar pesos -->
+    <!-- Modal Configurar Pesos -->
     <div class="modal fade" id="modalPesos" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title"><i class="fa fa-balance-scale me-2"></i>Configurar Pesos das Atividades</h5>
+                    <h5 class="modal-title text-white">
+                        <i class="fa fa-balance-scale me-2"></i>Configurar Pesos das Atividades
+                    </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="text-muted">Configure o peso de cada atividade para cálculo da média ponderada. A soma dos pesos deve ser 100%.</p>
+                    <p class="text-muted">
+                        Configure o peso de cada atividade para cálculo da média ponderada. 
+                        A soma dos pesos deve ser 100%.
+                    </p>
                     <div class="table-responsive">
                         <table class="table table-bordered">
                             <thead>
@@ -108,9 +114,7 @@
                                     <th style="width: 150px;">Peso (%)</th>
                                 </tr>
                             </thead>
-                            <tbody id="tabelaPesos">
-                                <!-- Será preenchido dinamicamente -->
-                            </tbody>
+                            <tbody id="tabelaPesos"></tbody>
                             <tfoot>
                                 <tr class="table-info">
                                     <td colspan="2" class="text-end"><strong>Total:</strong></td>
@@ -131,119 +135,107 @@
     <%- include('../../partials/footer') %>
 
     <script>
+        // ===== Estado Global =====
         const turmasDisponiveis = <%- JSON.stringify(turmas || []) %>;
         let pesosAtividades = {};
         let atividadesCarregadas = [];
-        let dadosNotasCarregados = []; // ← NOVO: Armazena os dados para o PDF
-        let numeroAvaliacoes = 0; // ← NOVO: Contador de avaliações
+        let dadosNotasCarregados = [];
 
-        console.log('🎯 Turmas disponíveis carregadas:', turmasDisponiveis);
-
+        // ===== Inicialização =====
         document.addEventListener('DOMContentLoaded', () => {
-            carregarTurmasUnicas();
-            document.getElementById('filtroTurma').addEventListener('change', carregarDisciplinasEAtividades);
+            popularTurmas();
+            configurarEventListeners();
+        });
+
+        function configurarEventListeners() {
+            document.getElementById('filtroTurma').addEventListener('change', onTurmaChange);
             document.getElementById('filtroDisciplina').addEventListener('change', carregarAtividades);
             document.getElementById('btnFiltrar').addEventListener('click', carregarNotas);
             document.getElementById('btnConfigurarPesos').addEventListener('click', abrirModalPesos);
             document.getElementById('btnSalvarPesos').addEventListener('click', salvarPesos);
             document.getElementById('btnGerarPDF').addEventListener('click', gerarPDF);
-        });
+        }
 
-        function carregarTurmasUnicas() {
-            const turmaSelect = document.getElementById('filtroTurma');
-            console.log('📋 Iniciando carregamento de turmas únicas...');
-            turmaSelect.innerHTML = '<option value="">Selecione uma turma</option>';
+        // ===== Funções de Filtros =====
+        function popularTurmas() {
+            const select = document.getElementById('filtroTurma');
+            select.innerHTML = '<option value="">Selecione uma turma</option>';
 
-            if (!turmasDisponiveis || turmasDisponiveis.length === 0) {
-                console.warn('⚠️ Nenhuma turma disponível');
-                turmaSelect.innerHTML += '<option disabled>Nenhuma turma encontrada</option>';
+            if (!turmasDisponiveis?.length) {
+                select.innerHTML += '<option disabled>Nenhuma turma encontrada</option>';
                 return;
             }
 
-            const turmasMap = new Map();
-            turmasDisponiveis.forEach(t => {
-                if (!turmasMap.has(t.id_turma)) {
-                    turmasMap.set(t.id_turma, {
-                        id_turma: t.id_turma,
-                        nome_turma: t.nome_turma
-                    });
-                }
-            });
-
-            const turmasUnicas = Array.from(turmasMap.values());
+            const turmasUnicas = [...new Map(turmasDisponiveis.map(t => [t.id_turma, t])).values()];
             turmasUnicas.forEach(turma => {
-                const option = document.createElement('option');
-                option.value = turma.id_turma;
-                option.textContent = turma.nome_turma;
-                turmaSelect.appendChild(option);
+                select.innerHTML += `<option value="${turma.id_turma}">${turma.nome_turma}</option>`;
             });
         }
 
-        async function carregarDisciplinasEAtividades() {
+        function onTurmaChange() {
+            popularDisciplinas();
+            carregarAtividades();
+        }
+
+        function popularDisciplinas() {
             const turmaId = document.getElementById('filtroTurma').value;
-            const disciplinaSelect = document.getElementById('filtroDisciplina');
-            disciplinaSelect.innerHTML = '<option value="">Todas as disciplinas</option>';
-            
-            if (!turmaId) {
-                document.getElementById('filtroAtividade').innerHTML = '<option value="">Todas as atividades</option>';
-                return;
-            }
+            const select = document.getElementById('filtroDisciplina');
+            select.innerHTML = '<option value="">Todas as disciplinas</option>';
+
+            if (!turmaId) return;
 
             const disciplinasDaTurma = turmasDisponiveis.filter(t => t.id_turma == turmaId);
-            const disciplinasMap = new Map();
-            disciplinasDaTurma.forEach(d => {
-                if (!disciplinasMap.has(d.id_disciplina)) {
-                    disciplinasMap.set(d.id_disciplina, {
-                        id_disciplina: d.id_disciplina,
-                        nome_disciplina: d.nome_disciplina
-                    });
-                }
-            });
-
-            const disciplinasUnicas = Array.from(disciplinasMap.values());
+            const disciplinasUnicas = [...new Map(disciplinasDaTurma.map(d => [d.id_disciplina, d])).values()];
+            
             disciplinasUnicas.forEach(disc => {
-                const option = document.createElement('option');
-                option.value = disc.id_disciplina;
-                option.textContent = disc.nome_disciplina;
-                disciplinaSelect.appendChild(option);
+                select.innerHTML += `<option value="${disc.id_disciplina}">${disc.nome_disciplina}</option>`;
             });
-
-            await carregarAtividades();
         }
 
         async function carregarAtividades() {
             const turmaId = document.getElementById('filtroTurma').value;
             const disciplinaId = document.getElementById('filtroDisciplina').value;
-            const atividadeSelect = document.getElementById('filtroAtividade');
-            atividadeSelect.innerHTML = '<option value="">Todas as atividades</option>';
-            
-            if (!turmaId) return;
+            const select = document.getElementById('filtroAtividade');
+            select.innerHTML = '<option value="">Todas as atividades</option>';
+
+            if (!turmaId) {
+                atividadesCarregadas = [];
+                return;
+            }
 
             try {
-                const url = `/api/quadro-notas/atividades?id_turma=${turmaId}${disciplinaId ? '&id_disciplina=' + disciplinaId : ''}`;
+                // ✅ URL atualizada
+                let url = `/professor/api/quadro-notas/atividades?id_turma=${turmaId}`;
+                if (disciplinaId) url += `&id_disciplina=${disciplinaId}`;
+
                 const response = await fetch(url);
                 const data = await response.json();
 
-                if (data.sucesso && data.dados && data.dados.length > 0) {
+                if (data.sucesso && data.dados?.length > 0) {
                     atividadesCarregadas = data.dados;
+                    
                     data.dados.forEach(atividade => {
-                        const option = document.createElement('option');
-                        option.value = atividade.id_atividade;
-                        option.textContent = `${atividade.titulo} (${atividade.disciplina})`;
-                        atividadeSelect.appendChild(option);
+                        select.innerHTML += `
+                            <option value="${atividade.id_atividade}">
+                                ${atividade.titulo} (${atividade.disciplina})
+                            </option>
+                        `;
                         
-                        if (!pesosAtividades[atividade.id_atividade]) {
-                            pesosAtividades[atividade.id_atividade] = 10;
+                        // Inicializa peso padrão se não existir
+                        if (pesosAtividades[atividade.id_atividade] === undefined) {
+                            pesosAtividades[atividade.id_atividade] = 0;
                         }
                     });
                 } else {
                     atividadesCarregadas = [];
                 }
             } catch (error) {
-                console.error('❌ Erro ao carregar atividades:', error);
+                console.error('Erro ao carregar atividades:', error);
+                atividadesCarregadas = [];
             }
         }
 
+        // ===== Carregamento de Notas =====
         async function carregarNotas() {
             const turmaId = document.getElementById('filtroTurma').value;
             const disciplinaId = document.getElementById('filtroDisciplina').value;
@@ -258,160 +250,196 @@
             tbody.innerHTML = '<tr><td colspan="7" class="text-center"><i class="fa fa-spinner fa-spin"></i> Carregando...</td></tr>';
 
             try {
-                const url = `/api/quadro-notas/notas?id_turma=${turmaId}${disciplinaId ? '&id_disciplina=' + disciplinaId : ''}`;
+                // ✅ URL atualizada
+                let url = `/professor/api/quadro-notas/notas?id_turma=${turmaId}`;
+                if (disciplinaId) url += `&id_disciplina=${disciplinaId}`;
+
                 const response = await fetch(url);
                 const data = await response.json();
 
                 tbody.innerHTML = '';
                 dadosNotasCarregados = [];
 
-                if (data.sucesso && data.dados && data.dados.length > 0) {
-                    let somaMedias = 0;
-                    let countAlunos = 0;
-
-                    data.dados.forEach(aluno => {
-                        let atividades = aluno.atividades || [];
-
-                        if (atividadeId) {
-                            atividades = atividades.filter(a => a.id_atividade == atividadeId);
-                        }
-
-                        if (atividades.length === 0) {
-                            tbody.innerHTML += `
-                                <tr>
-                                    <td>${aluno.nome_aluno}</td>
-                                    <td colspan="6" class="text-muted">Nenhuma atividade encontrada</td>
-                                </tr>
-                            `;
-                        } else {
-                            let somaPonderada = 0;
-                            let somaPesos = 0;
-
-                            atividades.forEach((atividade, index) => {
-                                // Usa o peso configurado no modal (padrão 0 se não configurado)
-                                const peso = Number(pesosAtividades[atividade.id_atividade] ?? 0);
-                                const nota = atividade.nota !== null ? Number(atividade.nota) : null;
-                                const notaPonderada = nota !== null ? (nota * peso) / 100 : null;
-                                
-                                // Acumula apenas atividades com nota
-                                if (nota !== null) {
-                                    somaPonderada += notaPonderada;
-                                    somaPesos += peso;
-                                }
-
-                                dadosNotasCarregados.push({
-                                    aluno: aluno.nome_aluno,
-                                    atividade: atividade.titulo,
-                                    disciplina: atividade.disciplina,
-                                    data: new Date(atividade.data_entrega).toLocaleDateString('pt-BR'),
-                                    nota: nota !== null ? nota.toFixed(1) : 'N/A',
-                                    peso: peso + '%',
-                                    notaPonderada: notaPonderada !== null ? notaPonderada.toFixed(2) : '-'
-                                });
-
-                                const tr = document.createElement('tr');
-                                
-                                if (index === 0) {
-                                    const tdAluno = document.createElement('td');
-                                    tdAluno.rowSpan = atividades.length + 1;
-                                    tdAluno.textContent = aluno.nome_aluno;
-                                    tr.appendChild(tdAluno);
-                                }
-
-                                tr.innerHTML += `
-                                    <td>${atividade.titulo}</td>
-                                    <td>${atividade.disciplina}</td>
-                                    <td>${new Date(atividade.data_entrega).toLocaleDateString('pt-BR')}</td>
-                                    <td>
-                                        <span class="badge ${nota !== null ? 'bg-success' : 'bg-secondary'}">
-                                            ${nota !== null ? nota.toFixed(1) : 'N/A'}
-                                        </span>
-                                    </td>
-                                    <td><strong>${peso}%</strong></td>
-                                    <td>
-                                        ${notaPonderada !== null ? `<strong>${notaPonderada.toFixed(2)}</strong>` : '-'}
-                                    </td>
-                                `;
-                                tbody.appendChild(tr);
-                            });
-
-                            // Média do aluno baseada em nota ponderada
-                            const mediaAluno = somaPesos > 0 ? (somaPonderada / somaPesos) * 100 : 0;
-
-                            dadosNotasCarregados.push({
-                                aluno: '',
-                                atividade: '',
-                                disciplina: '',
-                                data: 'MÉDIA DO ALUNO',
-                                nota: '',
-                                peso: '',
-                                notaPonderada: mediaAluno.toFixed(2)
-                            });
-
-                            const trMedia = document.createElement('tr');
-                            trMedia.className = 'table-info';
-                            trMedia.innerHTML = `
-                                <td colspan="4" class="text-end"><strong>Média do Aluno (ponderada):</strong></td>
-                                <td colspan="3"><strong>${mediaAluno.toFixed(2)}</strong></td>
-                            `;
-                            tbody.appendChild(trMedia);
-
-                            somaMedias += mediaAluno;
-                            countAlunos++;
-                        }
-                    });
-
-                    if (countAlunos > 0) {
-                        const mediaTurma = somaMedias / countAlunos;
-                        document.getElementById('mediaTurma').textContent = `Média da Turma (ponderada): ${mediaTurma.toFixed(2)}`;
-                        document.getElementById('mediaTurma').style.display = 'inline-block';
-                    } else {
-                        document.getElementById('mediaTurma').style.display = 'none';
-                    }
-                } else {
+                if (!data.sucesso || !data.dados?.length) {
                     tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Nenhuma nota encontrada</td></tr>';
                     document.getElementById('mediaTurma').style.display = 'none';
+                    return;
                 }
+
+                const resultado = renderizarNotas(data.dados, atividadeId);
+                exibirMediaTurma(resultado.somaMedias, resultado.countAlunos);
+
             } catch (error) {
-                console.error('❌ Erro ao carregar notas:', error);
+                console.error('Erro ao carregar notas:', error);
                 tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">Erro ao carregar notas</td></tr>';
                 document.getElementById('mediaTurma').style.display = 'none';
             }
         }
 
+        function renderizarNotas(alunos, atividadeId) {
+            const tbody = document.getElementById('corpoTabelaNotas');
+            let somaMedias = 0;
+            let countAlunos = 0;
+
+            alunos.forEach(aluno => {
+                let atividades = aluno.atividades || [];
+
+                // Filtra por atividade específica se selecionada
+                if (atividadeId) {
+                    atividades = atividades.filter(a => a.id_atividade == atividadeId);
+                }
+
+                if (atividades.length === 0) {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${aluno.nome_aluno}</td>
+                            <td colspan="6" class="text-muted">Nenhuma atividade encontrada</td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                const { somaPonderada, somaPesos } = renderizarAtividadesAluno(aluno, atividades);
+                
+                // Calcula média do aluno
+                const mediaAluno = somaPesos > 0 ? (somaPonderada / somaPesos) * 100 : 0;
+
+                // Adiciona dados para PDF
+                dadosNotasCarregados.push({
+                    aluno: '',
+                    atividade: '',
+                    disciplina: '',
+                    data: 'MÉDIA DO ALUNO',
+                    nota: '',
+                    peso: '',
+                    notaPonderada: mediaAluno.toFixed(2)
+                });
+
+                // Linha de média do aluno
+                const trMedia = document.createElement('tr');
+                trMedia.className = 'table-info';
+                trMedia.innerHTML = `
+                    <td colspan="4" class="text-end"><strong>Média do Aluno (ponderada):</strong></td>
+                    <td colspan="3"><strong>${mediaAluno.toFixed(2)}</strong></td>
+                `;
+                tbody.appendChild(trMedia);
+
+                somaMedias += mediaAluno;
+                countAlunos++;
+            });
+
+            return { somaMedias, countAlunos };
+        }
+
+        function renderizarAtividadesAluno(aluno, atividades) {
+            const tbody = document.getElementById('corpoTabelaNotas');
+            let somaPonderada = 0;
+            let somaPesos = 0;
+
+            atividades.forEach((atividade, index) => {
+                const peso = Number(pesosAtividades[atividade.id_atividade] ?? 0);
+                const nota = atividade.nota !== null ? Number(atividade.nota) : null;
+                const notaPonderada = nota !== null ? (nota * peso) / 100 : null;
+
+                // Acumula para média
+                if (nota !== null) {
+                    somaPonderada += notaPonderada;
+                    somaPesos += peso;
+                }
+
+                // Dados para PDF
+                dadosNotasCarregados.push({
+                    aluno: index === 0 ? aluno.nome_aluno : '',
+                    atividade: atividade.titulo,
+                    disciplina: atividade.disciplina,
+                    data: formatarData(atividade.data_entrega),
+                    nota: nota !== null ? nota.toFixed(1) : 'N/A',
+                    peso: peso + '%',
+                    notaPonderada: notaPonderada !== null ? notaPonderada.toFixed(2) : '-'
+                });
+
+                // Renderiza linha
+                const tr = document.createElement('tr');
+
+                // Primeira coluna com rowspan
+                if (index === 0) {
+                    const tdAluno = document.createElement('td');
+                    tdAluno.rowSpan = atividades.length + 1;
+                    tdAluno.innerHTML = `<strong>${aluno.nome_aluno}</strong>`;
+                    tr.appendChild(tdAluno);
+                }
+
+                tr.innerHTML += `
+                    <td>${atividade.titulo}</td>
+                    <td>${atividade.disciplina}</td>
+                    <td>${formatarData(atividade.data_entrega)}</td>
+                    <td>
+                        <span class="badge ${nota !== null ? 'bg-success' : 'bg-secondary'}">
+                            ${nota !== null ? nota.toFixed(1) : 'N/A'}
+                        </span>
+                    </td>
+                    <td><strong>${peso}%</strong></td>
+                    <td>${notaPonderada !== null ? `<strong>${notaPonderada.toFixed(2)}</strong>` : '-'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            return { somaPonderada, somaPesos };
+        }
+
+        function exibirMediaTurma(somaMedias, countAlunos) {
+            const el = document.getElementById('mediaTurma');
+            
+            if (countAlunos > 0) {
+                const mediaTurma = somaMedias / countAlunos;
+                el.textContent = `Média da Turma (ponderada): ${mediaTurma.toFixed(2)}`;
+                el.style.display = 'inline-block';
+            } else {
+                el.style.display = 'none';
+            }
+        }
+
+        // ===== Modal de Pesos =====
         function abrirModalPesos() {
             const tbody = document.getElementById('tabelaPesos');
             tbody.innerHTML = '';
 
             if (atividadesCarregadas.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Selecione uma turma e carregue as atividades primeiro</td></tr>';
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="3" class="text-center text-muted">
+                            Selecione uma turma e carregue as atividades primeiro
+                        </td>
+                    </tr>
+                `;
             } else {
                 atividadesCarregadas.forEach(atividade => {
-                    const tr = document.createElement('tr');
-                    const peso = pesosAtividades[atividade.id_atividade] || 10;
+                    const peso = pesosAtividades[atividade.id_atividade] || 0;
                     
-                    tr.innerHTML = `
-                        <td>${atividade.titulo}</td>
-                        <td>${atividade.disciplina}</td>
-                        <td>
-                            <input type="number" class="form-control peso-input" 
-                                   data-id="${atividade.id_atividade}" 
-                                   value="${peso}" 
-                                   min="0" max="100" step="1">
-                        </td>
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${atividade.titulo}</td>
+                            <td>${atividade.disciplina}</td>
+                            <td>
+                                <input type="number" class="form-control peso-input" 
+                                       data-id="${atividade.id_atividade}" 
+                                       value="${peso}" 
+                                       min="0" max="100" step="1">
+                            </td>
+                        </tr>
                     `;
-                    tbody.appendChild(tr);
                 });
 
-                atualizarTotalPesos();
+                // Event listeners para atualizar total
+                setTimeout(() => {
+                    document.querySelectorAll('.peso-input').forEach(input => {
+                        input.addEventListener('input', atualizarTotalPesos);
+                    });
+                    atualizarTotalPesos();
+                }, 0);
             }
 
-            const modal = new bootstrap.Modal(document.getElementById('modalPesos'));
-            modal.show();
-
-            document.querySelectorAll('.peso-input').forEach(input => {
-                input.addEventListener('input', atualizarTotalPesos);
-            });
+            new bootstrap.Modal(document.getElementById('modalPesos')).show();
         }
 
         function atualizarTotalPesos() {
@@ -419,27 +447,20 @@
             document.querySelectorAll('.peso-input').forEach(input => {
                 total += parseFloat(input.value) || 0;
             });
-            
-            const totalElement = document.getElementById('totalPesos');
-            totalElement.textContent = total.toFixed(0) + '%';
-            
-            if (total !== 100) {
-                totalElement.classList.add('text-danger');
-                totalElement.classList.remove('text-success');
-            } else {
-                totalElement.classList.add('text-success');
-                totalElement.classList.remove('text-danger');
-            }
+
+            const el = document.getElementById('totalPesos');
+            el.textContent = total.toFixed(0) + '%';
+            el.className = total === 100 ? 'text-success' : 'text-danger';
         }
 
         function salvarPesos() {
             let total = 0;
-            const pesos = {};
+            const novosPesos = {};
 
             document.querySelectorAll('.peso-input').forEach(input => {
                 const id = input.dataset.id;
                 const peso = parseFloat(input.value) || 0;
-                pesos[id] = peso;
+                novosPesos[id] = peso;
                 total += peso;
             });
 
@@ -448,16 +469,14 @@
                 return;
             }
 
-            pesosAtividades = pesos;
-            const modal = bootstrap.Modal.getInstance(document.getElementById('modalPesos'));
-            modal.hide();
-            alert('Pesos aplicados com sucesso! Atualizando a tabela...');
-
-            // ✅ Recarrega notas imediatamente para refletir os novos pesos
+            pesosAtividades = novosPesos;
+            bootstrap.Modal.getInstance(document.getElementById('modalPesos')).hide();
+            
+            alert('Pesos aplicados com sucesso!');
             carregarNotas();
         }
 
-        // Gerar PDF com jsPDF + autoTable
+        // ===== Geração de PDF =====
         function gerarPDF() {
             if (dadosNotasCarregados.length === 0) {
                 alert('Carregue as notas primeiro antes de gerar o PDF!');
@@ -470,19 +489,17 @@
             const turma = document.getElementById('filtroTurma').selectedOptions[0]?.text || 'Todas';
             const disciplina = document.getElementById('filtroDisciplina').selectedOptions[0]?.text || 'Todas';
             const mediaTurma = document.getElementById('mediaTurma').textContent || '';
-            const dataAtual = new Date().toLocaleDateString('pt-BR');
+            const dataAtual = formatarData(new Date());
 
             // Cabeçalho
             doc.setFontSize(18);
             doc.text('Quadro de Notas', 148, 15, { align: 'center' });
-            
+
             doc.setFontSize(12);
             doc.text(`Turma: ${turma}`, 15, 25);
             doc.text(`Disciplina: ${disciplina}`, 15, 32);
             doc.text(`Data: ${dataAtual}`, 250, 25);
-            if (mediaTurma) {
-                doc.text(mediaTurma, 250, 32);
-            }
+            if (mediaTurma) doc.text(mediaTurma, 250, 32);
 
             // Tabela
             doc.autoTable({
@@ -504,113 +521,12 @@
                 margin: { top: 40, left: 15, right: 15 }
             });
 
-            // Salvar
             doc.save(`Quadro_Notas_${turma}_${dataAtual.replace(/\//g, '-')}.pdf`);
         }
 
-        // Função para adicionar coluna de avaliação
-        function adicionarColuna() {
-            numeroAvaliacoes++;
-            const colunaId = `avaliacao-${numeroAvaliacoes}`;
-
-            // Adiciona cabeçalho
-            const thead = document.querySelector('#tabelaNotas thead tr');
-            const thNova = document.createElement('th');
-            thNova.innerHTML = `
-                <div class="d-flex align-items-center justify-content-between">
-                    <input type="text" 
-                           class="form-control form-control-sm nome-avaliacao" 
-                           placeholder="Nome da Avaliação"
-                           data-coluna="${colunaId}">
-                    <input type="number" 
-                           class="form-control form-control-sm ms-2 peso-avaliacao" 
-                           placeholder="Peso (%)"
-                           min="0"
-                           max="100"
-                           value="0"
-                           data-coluna="${colunaId}"
-                           style="width: 80px;">
-                    <button class="btn btn-sm btn-danger ms-2" onclick="removerColuna('${colunaId}')">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            `;
-            thead.insertBefore(thNova, thead.lastElementChild);
-
-            // Adiciona células para cada aluno
-            const tbody = document.querySelector('#tabelaNotas tbody');
-            const linhas = tbody.querySelectorAll('tr');
-            
-            linhas.forEach(linha => {
-                const tdNova = document.createElement('td');
-                const idAluno = linha.dataset.aluno;
-                tdNova.innerHTML = `
-                    <input type="number" 
-                           class="form-control form-control-sm nota-input" 
-                           min="0" 
-                           max="10" 
-                           step="0.1"
-                           data-aluno="${idAluno}"
-                           data-coluna="${colunaId}"
-                           placeholder="0.0">
-                `;
-                linha.insertBefore(tdNova, linha.lastElementChild);
-            });
-
-            // Adiciona evento de cálculo automático
-            document.querySelectorAll('.nota-input, .peso-avaliacao').forEach(input => {
-                input.addEventListener('input', calcularMediasAutomaticamente);
-            });
-
-            console.log('✅ Coluna de avaliação adicionada:', colunaId);
-        }
-
-        // Função para remover coluna de avaliação
-        function removerColuna(colunaId) {
-            numeroAvaliacoes--;
-            const thead = document.querySelector('#tabelaNotas thead tr');
-            const thRemover = Array.from(thead.querySelectorAll('th')).find(th => th.dataset.coluna === colunaId);
-            if (thRemover) {
-                thead.removeChild(thRemover);
-            }
-
-            const tbody = document.querySelector('#tabelaNotas tbody');
-            const linhas = tbody.querySelectorAll('tr');
-            linhas.forEach(linha => {
-                const tdRemover = Array.from(linha.querySelectorAll('td')).find(td => td.dataset.coluna === colunaId);
-                if (tdRemover) {
-                    linha.removeChild(tdRemover);
-                }
-            });
-
-            console.log('✅ Coluna de avaliação removida:', colunaId);
-        }
-
-        // Função para calcular médias automaticamente
-        function calcularMediasAutomaticamente() {
-            const linhas = document.querySelectorAll('#tabelaNotas tbody tr');
-            linhas.forEach(linha => {
-                const notas = Array.from(linha.querySelectorAll('.nota-input'));
-                const pesos = Array.from(linha.querySelectorAll('.peso-avaliacao'));
-                
-                let somaPonderada = 0;
-                let somaPesos = 0;
-
-                notas.forEach((notaInput, index) => {
-                    const nota = parseFloat(notaInput.value) || 0;
-                    const peso = parseFloat(pesos[index].value) || 0;
-                    const notaPonderada = (nota * peso) / 100;
-                    
-                    somaPonderada += notaPonderada;
-                    somaPesos += peso;
-                });
-
-                const media = somaPesos > 0 ? (somaPonderada / somaPesos) * 100 : 0;
-                const tdMedia = linha.querySelector('.td-media');
-                if (tdMedia) {
-                    tdMedia.textContent = media.toFixed(2);
-                }
-            });
+        // ===== Utilitários =====
+        function formatarData(data) {
+            return new Date(data).toLocaleDateString('pt-BR');
         }
     </script>
 </body>
