@@ -1,6 +1,4 @@
 const atividadeModel = require('../models/atividadeModel');
-const atividadeEntregaModel = require('../models/atividadeEntregaModel');
-const corrigirAtividadeModel = require('../models/corrigirAtividadeModel');
 const turmaModel = require('../models/turmaModel');
 const sessao = require('../utils/sessao');
 const path = require('path');
@@ -184,7 +182,7 @@ module.exports = {
             if (!id_professor) return res.json({ sucesso: false, erro: 'Professor não identificado.' });
 
             const { id_turma, id_disciplina } = req.query;
-            const atividades = await corrigirAtividadeModel.listarAtividadesComEntregas(id_professor, id_turma, id_disciplina);
+            const atividades = await atividadeModel.listarAtividadesComEntregas(id_professor, id_turma, id_disciplina);
             res.json({ sucesso: true, dados: atividades });
         } catch (error) {
             console.error('Erro ao listar atividades para corrigir:', error);
@@ -198,7 +196,7 @@ module.exports = {
             if (!id_professor) return res.json({ sucesso: false, erro: 'Professor não identificado.' });
 
             const { id_atividade } = req.params;
-            const entregas = await corrigirAtividadeModel.listarEntregasPorAtividade(id_atividade);
+            const entregas = await atividadeModel.listarEntregasPorAtividade(id_atividade);
             res.json({ sucesso: true, dados: entregas });
         } catch (error) {
             console.error('Erro ao listar entregas:', error);
@@ -212,7 +210,7 @@ module.exports = {
             if (!id_professor) return res.json({ sucesso: false, erro: 'Professor não identificado.' });
 
             const { id_entrega } = req.params;
-            const entrega = await corrigirAtividadeModel.buscarEntregaPorId(id_entrega);
+            const entrega = await atividadeModel.buscarEntregaPorId(id_entrega);
             if (!entrega) return res.json({ sucesso: false, erro: 'Entrega não encontrada.' });
 
             res.json({ sucesso: true, dados: entrega });
@@ -233,7 +231,7 @@ module.exports = {
             const validacao = validarNota(nota);
             if (!validacao.valido) return res.json({ sucesso: false, erro: validacao.erro });
 
-            await corrigirAtividadeModel.atualizarCorrecao(id_entrega, validacao.valor, feedback || null);
+            await atividadeModel.atualizarCorrecao(id_entrega, validacao.valor, feedback || null);
             res.json({ sucesso: true, mensagem: 'Correção salva com sucesso!' });
         } catch (error) {
             console.error('Erro ao corrigir entrega:', error);
@@ -258,7 +256,7 @@ module.exports = {
             const id_aluno = sessao.getAluno(req);
             if (!id_aluno) return res.json({ sucesso: false, erro: 'Aluno não identificado.' });
 
-            const atividades = await atividadeEntregaModel.listarAtividadesPorAluno(id_aluno);
+            const atividades = await atividadeModel.listarAtividadesPorAluno(id_aluno);
             res.json({ sucesso: true, dados: atividades });
         } catch (error) {
             console.error('Erro ao listar atividades:', error);
@@ -272,7 +270,7 @@ module.exports = {
             if (!id_aluno) return res.json({ sucesso: false, erro: 'Aluno não identificado.' });
 
             const { id_atividade } = req.params;
-            const atividade = await atividadeEntregaModel.buscarAtividadeParaEntrega(id_atividade, id_aluno);
+            const atividade = await atividadeModel.buscarAtividadeParaEntrega(id_atividade, id_aluno);
             if (!atividade) return res.json({ sucesso: false, erro: 'Atividade não encontrada ou sem permissão.' });
 
             res.json({ sucesso: true, dados: atividade });
@@ -295,10 +293,10 @@ module.exports = {
                     return res.json({ sucesso: false, erro: 'O texto da resposta não pode estar vazio.' });
                 }
                 if (id_entrega) {
-                    await atividadeEntregaModel.atualizarEntrega(id_entrega, null, texto);
+                    await atividadeModel.atualizarEntrega(id_entrega, null, texto);
                     return res.json({ sucesso: true, mensagem: 'Resposta atualizada com sucesso!' });
                 }
-                const result = await atividadeEntregaModel.criarEntrega(id_atividade, id_aluno, null, texto);
+                const result = await atividadeModel.criarEntrega(id_atividade, id_aluno, null, texto);
                 return res.json({ sucesso: true, mensagem: 'Resposta enviada com sucesso!', id: result.insertId });
             }
 
@@ -310,15 +308,15 @@ module.exports = {
                 const nomeArquivo = req.file.filename;
 
                 if (id_entrega) {
-                    const entregaAntiga = await atividadeEntregaModel.buscarAtividadeParaEntrega(id_atividade, id_aluno);
+                    const entregaAntiga = await atividadeModel.buscarAtividadeParaEntrega(id_atividade, id_aluno);
                     if (entregaAntiga?.arquivo) {
                         const caminhoAntigo = path.join(__dirname, '../uploads', entregaAntiga.arquivo);
                         if (fs.existsSync(caminhoAntigo)) fs.unlinkSync(caminhoAntigo);
                     }
-                    await atividadeEntregaModel.atualizarEntrega(id_entrega, nomeArquivo, null);
+                    await atividadeModel.atualizarEntrega(id_entrega, nomeArquivo, null);
                     return res.json({ sucesso: true, mensagem: 'Arquivo reenviado com sucesso!' });
                 }
-                const result = await atividadeEntregaModel.criarEntrega(id_atividade, id_aluno, nomeArquivo, null);
+                const result = await atividadeModel.criarEntrega(id_atividade, id_aluno, nomeArquivo, null);
                 return res.json({ sucesso: true, mensagem: 'Arquivo enviado com sucesso!', id: result.insertId });
             }
 
@@ -334,7 +332,7 @@ module.exports = {
             const id_aluno = sessao.getAluno(req);
             if (!id_aluno) return res.json({ sucesso: false, erro: 'Aluno não identificado.' });
 
-            const stats = await atividadeEntregaModel.estatisticasAluno(id_aluno);
+            const stats = await atividadeModel.estatisticasAluno(id_aluno);
             res.json({ sucesso: true, dados: stats });
         } catch (error) {
             console.error('Erro ao buscar estatísticas:', error);
