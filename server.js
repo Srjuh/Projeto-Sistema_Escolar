@@ -10,11 +10,7 @@ const fs = require('fs');
 const siteRoutes = require('./routes/siteRoutes');
 const professorRoutes = require('./routes/professorRoutes');
 const alunoRoutes = require('./routes/alunoRoutes');
-
-// Rotas de API administrativas
-const apiUsuarioRoutes = require('./routes/apiUsuarioRoutes');
-const turmaRoutes = require('./routes/turmaRoutes');
-const disciplinaRoutes = require('./routes/disciplinaRoutes');
+const apiRoutes = require('./routes/apiRoutes');
 
 const app = express();
 const port = 5000;
@@ -50,18 +46,12 @@ app.use(function(req, res, next) {
 });
 
 // ============================================
-// ROTAS PRINCIPAIS
+// ROTAS
 // ============================================
 app.use('/', siteRoutes);
 app.use('/professor', professorRoutes);
 app.use('/aluno', alunoRoutes);
-
-// ============================================
-// ROTAS DE API ADMINISTRATIVAS
-// ============================================
-app.use('/api/usuarios', apiUsuarioRoutes);
-app.use('/api/turmas', turmaRoutes);
-app.use('/api/disciplinas', disciplinaRoutes);
+app.use('/api', apiRoutes);
 
 // ============================================
 // INICIALIZAÇÃO
