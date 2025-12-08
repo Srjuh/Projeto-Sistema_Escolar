@@ -5,13 +5,13 @@ const turmaModel = require('../models/turmaModel');
 const disciplinaModel = require('../models/disciplinaModel');
 
 // ===== Autenticação =====
-router.post('/login', loginController.login);
-router.post('/logout', loginController.logout);
+router.post('/usuarios/login', loginController.login);
+router.post('/usuarios/logout', loginController.logout);
 
 // ===== Turmas =====
-router.get('/turmas', async (req, res) => {
+router.get('/turmas', async function(req, res) {
     try {
-        const turmas = await turmaModel.listar();
+        var turmas = await turmaModel.listar();
         res.json({ sucesso: true, dados: turmas });
     } catch (error) {
         console.error('Erro ao listar turmas:', error);
@@ -20,9 +20,9 @@ router.get('/turmas', async (req, res) => {
 });
 
 // ===== Disciplinas =====
-router.get('/disciplinas', async (req, res) => {
+router.get('/disciplinas', async function(req, res) {
     try {
-        const disciplinas = await disciplinaModel.listar();
+        var disciplinas = await disciplinaModel.listar();
         res.json({ sucesso: true, dados: disciplinas });
     } catch (error) {
         console.error('Erro ao listar disciplinas:', error);
