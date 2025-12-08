@@ -1,16 +1,7 @@
 const turmaModel = require('../models/turmaModel');
 const professorModel = require('../models/professorModel');
 const disciplinaModel = require('../models/disciplinaModel');
-
-// Função para verificar sessão do professor
-function verificarSessao(req, res) {
-    const id_professor = req.session?.usuario?.id_professor;
-    if (!id_professor) {
-        console.warn('Tentativa de acesso sem sessão de professor');
-        return null;
-    }
-    return id_professor;
-}
+const sessao = require('../utils/sessao');
 
 module.exports = {
     // Renderizar home do professor
@@ -19,7 +10,7 @@ module.exports = {
             console.log("Sessão:", req.session);
 
             // Verifica a sessão do professor
-            const id_professor = req.session?.usuario?.id_professor || req.query.id_professor;
+            const id_professor = sessao.getProfessor(req);
                 if (!id_professor) {
                     return res.render('pages/professor/professorHome', { turmas: [] });
                 }
