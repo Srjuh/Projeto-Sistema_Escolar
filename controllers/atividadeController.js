@@ -2,15 +2,14 @@ const atividadeModel = require('../models/atividadeModel');
 const atividadeEntregaModel = require('../models/atividadeEntregaModel');
 const corrigirAtividadeModel = require('../models/corrigirAtividadeModel');
 const turmaModel = require('../models/turmaModel');
-const disciplinaModel = require('../models/disciplinaModel');
+const sessao = require('../utils/sessao');
 const path = require('path');
 const fs = require('fs');
 
-// ===== Helpers =====
+// ===== Helpers de Validação =====
 function isYearValid(dateStr) {
     if (!dateStr || typeof dateStr !== 'string') return false;
-    const onlyDate = dateStr.split('T')[0];
-    const year = onlyDate.split('-')[0];
+    const year = dateStr.split('T')[0].split('-')[0];
     return /^\d{1,4}$/.test(year);
 }
 
@@ -23,29 +22,34 @@ function isDateOnOrAfterToday(dateStr) {
     return input.getTime() >= today.getTime();
 }
 
-function verificarSessaoProfessor(req, res) {
-    const id_professor = req.session?.usuario?.id_professor;
-    if (!id_professor) {
-        res.json({ sucesso: false, erro: 'Professor não identificado na sessão.' });
-        return null;
+function validarData(data_entrega) {
+    if (!isYearValid(data_entrega)) {
+        return { valido: false, erro: 'Ano inválido. Informe ano com até 4 dígitos.' };
     }
-    return id_professor;
+    if (!isDateOnOrAfterToday(data_entrega)) {
+        return { valido: false, erro: 'Data de entrega inválida. A data deve ser de hoje ou futura.' };
+    }
+    return { valido: true };
 }
 
-function verificarSessaoAluno(req, res) {
-    const id_aluno = req.session?.usuario?.id_aluno;
-    if (!id_aluno) {
-        return null;
+function validarNota(nota) {
+    if (nota === undefined || nota === null || nota === '') {
+        return { valido: false, erro: 'A nota é obrigatória.' };
     }
-    return id_aluno;
+    const notaNum = parseFloat(nota);
+    if (isNaN(notaNum) || notaNum < 0 || notaNum > 10) {
+        return { valido: false, erro: 'A nota deve ser um número entre 0 e 10.' };
+    }
+    return { valido: true, valor: notaNum };
 }
 
 module.exports = {
     // ===== PROFESSOR: Gerenciar Atividades =====
     async listar(req, res) {
         try {
-            const id_professor = verificarSessaoProfessor(req, res);
-            if (!id_professor) return;
+            const id_professor = sessao.getProfessor(req);
+            if (!id_professor) return res.json({ sucesso: false, erro: 'Professor não identificado.' });
+
             const atividades = await atividadeModel.listarPorProfessor(id_professor);
             res.json({ sucesso: true, dados: atividades });
         } catch (error) {
@@ -56,9 +60,10 @@ module.exports = {
 
     async buscarPorId(req, res) {
         try {
+            const id_professor = sessao.getProfessor(req);
+            if (!id_professor) return res.json({ sucesso: false, erro: 'Professor não identificado.' });
+
             const { id } = req.params;
-            const id_professor = verificarSessaoProfessor(req, res);
-            if (!id_professor) return;
             const atividade = await atividadeModel.buscarPorId(id);
             if (!atividade) return res.json({ sucesso: false, erro: 'Atividade não encontrada.' });
 
@@ -74,19 +79,16 @@ module.exports = {
 
     async criar(req, res) {
         try {
-            const id_professor = verificarSessaoProfessor(req, res);
-            if (!id_professor) return;
+            const id_professor = sessao.getProfessor(req);
+            if (!id_professor) return res.json({ sucesso: false, erro: 'Professor não identificado.' });
 
             const { titulo, descricao, data_entrega, id_turma, id_disciplina } = req.body;
             if (!titulo || !data_entrega || !id_turma || !id_disciplina) {
                 return res.json({ sucesso: false, erro: 'Campos obrigatórios faltando.' });
             }
-            if (!isYearValid(data_entrega)) {
-                return res.json({ sucesso: false, erro: 'Ano inválido. Informe ano com até 4 dígitos.' });
-            }
-            if (!isDateOnOrAfterToday(data_entrega)) {
-                return res.json({ sucesso: false, erro: 'Data de entrega inválida. A data deve ser de hoje ou futura.' });
-            }
+
+            const validacao = validarData(data_entrega);
+            if (!validacao.valido) return res.json({ sucesso: false, erro: validacao.erro });
 
             const ok = await turmaModel.verificarProfessorNaTurma(id_professor, id_turma, id_disciplina);
             if (!ok) return res.json({ sucesso: false, erro: 'Você não está vinculado a essa turma/disciplina.' });
@@ -101,8 +103,8 @@ module.exports = {
 
     async atualizar(req, res) {
         try {
-            const id_professor = verificarSessaoProfessor(req, res);
-            if (!id_professor) return;
+            const id_professor = sessao.getProfessor(req);
+            if (!id_professor) return res.json({ sucesso: false, erro: 'Professor não identificado.' });
 
             const { id } = req.params;
             const { titulo, descricao, data_entrega, id_turma, id_disciplina } = req.body;
@@ -111,18 +113,14 @@ module.exports = {
             if (!atividade) return res.json({ sucesso: false, erro: 'Atividade não encontrada.' });
 
             if (data_entrega) {
-                if (!isYearValid(data_entrega)) {
-                    return res.json({ sucesso: false, erro: 'Ano inválido. Informe ano com até 4 dígitos.' });
-                }
-                if (!isDateOnOrAfterToday(data_entrega)) {
-                    return res.json({ sucesso: false, erro: 'Data de entrega inválida. A data deve ser de hoje ou futura.' });
-                }
+                const validacao = validarData(data_entrega);
+                if (!validacao.valido) return res.json({ sucesso: false, erro: validacao.erro });
             }
 
             const okAtual = await turmaModel.verificarProfessorNaTurma(id_professor, atividade.id_turma, atividade.id_disciplina);
             const okNovo = await turmaModel.verificarProfessorNaTurma(id_professor, id_turma, id_disciplina);
             if (!okAtual || !okNovo) {
-                return res.json({ sucesso: false, erro: 'Sem permissão para editar esta atividade / mover para a turma escolhida.' });
+                return res.json({ sucesso: false, erro: 'Sem permissão para editar/mover esta atividade.' });
             }
 
             await atividadeModel.atualizar(id, { titulo, descricao, data_entrega, id_turma, id_disciplina });
@@ -135,8 +133,8 @@ module.exports = {
 
     async excluir(req, res) {
         try {
-            const id_professor = verificarSessaoProfessor(req, res);
-            if (!id_professor) return;
+            const id_professor = sessao.getProfessor(req);
+            if (!id_professor) return res.json({ sucesso: false, erro: 'Professor não identificado.' });
 
             const { id } = req.params;
             const atividade = await atividadeModel.buscarPorId(id);
@@ -155,8 +153,8 @@ module.exports = {
 
     async listarTurmasEDisciplinas(req, res) {
         try {
-            const id_professor = verificarSessaoProfessor(req, res);
-            if (!id_professor) return;
+            const id_professor = sessao.getProfessor(req);
+            if (!id_professor) return res.json({ sucesso: false, erro: 'Professor não identificado.' });
 
             const turmas = await turmaModel.listarTurmasDisciplinasPorProfessor(id_professor);
             res.json({ sucesso: true, turmas });
@@ -169,7 +167,7 @@ module.exports = {
     // ===== PROFESSOR: Corrigir Atividades =====
     async renderCorrigirAtividades(req, res) {
         try {
-            const id_professor = req.session?.usuario?.id_professor;
+            const id_professor = sessao.getProfessor(req);
             if (!id_professor) return res.redirect('/login');
 
             const turmas = await turmaModel.listarTurmasDisciplinasPorProfessor(id_professor);
@@ -182,8 +180,8 @@ module.exports = {
 
     async listarAtividadesParaCorrigir(req, res) {
         try {
-            const id_professor = verificarSessaoProfessor(req, res);
-            if (!id_professor) return;
+            const id_professor = sessao.getProfessor(req);
+            if (!id_professor) return res.json({ sucesso: false, erro: 'Professor não identificado.' });
 
             const { id_turma, id_disciplina } = req.query;
             const atividades = await corrigirAtividadeModel.listarAtividadesComEntregas(id_professor, id_turma, id_disciplina);
@@ -196,8 +194,8 @@ module.exports = {
 
     async listarEntregas(req, res) {
         try {
-            const id_professor = verificarSessaoProfessor(req, res);
-            if (!id_professor) return;
+            const id_professor = sessao.getProfessor(req);
+            if (!id_professor) return res.json({ sucesso: false, erro: 'Professor não identificado.' });
 
             const { id_atividade } = req.params;
             const entregas = await corrigirAtividadeModel.listarEntregasPorAtividade(id_atividade);
@@ -210,8 +208,8 @@ module.exports = {
 
     async buscarEntrega(req, res) {
         try {
-            const id_professor = verificarSessaoProfessor(req, res);
-            if (!id_professor) return;
+            const id_professor = sessao.getProfessor(req);
+            if (!id_professor) return res.json({ sucesso: false, erro: 'Professor não identificado.' });
 
             const { id_entrega } = req.params;
             const entrega = await corrigirAtividadeModel.buscarEntregaPorId(id_entrega);
@@ -226,22 +224,16 @@ module.exports = {
 
     async corrigirEntrega(req, res) {
         try {
-            const id_professor = verificarSessaoProfessor(req, res);
-            if (!id_professor) return;
+            const id_professor = sessao.getProfessor(req);
+            if (!id_professor) return res.json({ sucesso: false, erro: 'Professor não identificado.' });
 
             const { id_entrega } = req.params;
             const { nota, feedback } = req.body;
 
-            if (nota === undefined || nota === null || nota === '') {
-                return res.json({ sucesso: false, erro: 'A nota é obrigatória.' });
-            }
+            const validacao = validarNota(nota);
+            if (!validacao.valido) return res.json({ sucesso: false, erro: validacao.erro });
 
-            const notaNum = parseFloat(nota);
-            if (isNaN(notaNum) || notaNum < 0 || notaNum > 10) {
-                return res.json({ sucesso: false, erro: 'A nota deve ser um número entre 0 e 10.' });
-            }
-
-            await corrigirAtividadeModel.atualizarCorrecao(id_entrega, notaNum, feedback || null);
+            await corrigirAtividadeModel.atualizarCorrecao(id_entrega, validacao.valor, feedback || null);
             res.json({ sucesso: true, mensagem: 'Correção salva com sucesso!' });
         } catch (error) {
             console.error('Erro ao corrigir entrega:', error);
@@ -252,7 +244,7 @@ module.exports = {
     // ===== ALUNO: Entregar Atividades =====
     async renderAtividades(req, res) {
         try {
-            const id_aluno = verificarSessaoAluno(req, res);
+            const id_aluno = sessao.getAluno(req);
             if (!id_aluno) return res.redirect('/login');
             res.render('pages/aluno/atividadesEntregar', { usuario: req.session.usuario });
         } catch (error) {
@@ -263,8 +255,8 @@ module.exports = {
 
     async listarAtividadesAluno(req, res) {
         try {
-            const id_aluno = verificarSessaoAluno(req, res);
-            if (!id_aluno) return res.json({ sucesso: false, erro: 'Aluno não identificado na sessão.' });
+            const id_aluno = sessao.getAluno(req);
+            if (!id_aluno) return res.json({ sucesso: false, erro: 'Aluno não identificado.' });
 
             const atividades = await atividadeEntregaModel.listarAtividadesPorAluno(id_aluno);
             res.json({ sucesso: true, dados: atividades });
@@ -276,27 +268,28 @@ module.exports = {
 
     async buscarAtividadeAluno(req, res) {
         try {
-            const { id_atividade } = req.params;
-            const id_aluno = verificarSessaoAluno(req, res);
-            if (!id_aluno) return res.json({ sucesso: false, erro: 'Aluno não identificado na sessão.' });
+            const id_aluno = sessao.getAluno(req);
+            if (!id_aluno) return res.json({ sucesso: false, erro: 'Aluno não identificado.' });
 
+            const { id_atividade } = req.params;
             const atividade = await atividadeEntregaModel.buscarAtividadeParaEntrega(id_atividade, id_aluno);
             if (!atividade) return res.json({ sucesso: false, erro: 'Atividade não encontrada ou sem permissão.' });
 
             res.json({ sucesso: true, dados: atividade });
         } catch (error) {
             console.error('Erro ao buscar atividade:', error);
-            res.json({ sucesso: false, erro: 'Erro ao buscar atividade: ' + error.message });
+            res.json({ sucesso: false, erro: 'Erro ao buscar atividade.' });
         }
     },
 
     async entregarAtividade(req, res) {
         try {
-            const id_aluno = verificarSessaoAluno(req, res);
-            if (!id_aluno) return res.json({ sucesso: false, erro: 'Aluno não identificado na sessão.' });
+            const id_aluno = sessao.getAluno(req);
+            if (!id_aluno) return res.json({ sucesso: false, erro: 'Aluno não identificado.' });
 
             const { id_atividade, id_entrega, texto, tipo_entrega } = req.body;
 
+            // Entrega por texto
             if (tipo_entrega === 'texto') {
                 if (!texto || texto.trim() === '') {
                     return res.json({ sucesso: false, erro: 'O texto da resposta não pode estar vazio.' });
@@ -304,12 +297,12 @@ module.exports = {
                 if (id_entrega) {
                     await atividadeEntregaModel.atualizarEntrega(id_entrega, null, texto);
                     return res.json({ sucesso: true, mensagem: 'Resposta atualizada com sucesso!' });
-                } else {
-                    const result = await atividadeEntregaModel.criarEntrega(id_atividade, id_aluno, null, texto);
-                    return res.json({ sucesso: true, mensagem: 'Resposta enviada com sucesso!', id: result.insertId });
                 }
+                const result = await atividadeEntregaModel.criarEntrega(id_atividade, id_aluno, null, texto);
+                return res.json({ sucesso: true, mensagem: 'Resposta enviada com sucesso!', id: result.insertId });
             }
 
+            // Entrega por arquivo
             if (tipo_entrega === 'arquivo') {
                 if (!req.file) {
                     return res.json({ sucesso: false, erro: 'Nenhum arquivo foi enviado.' });
@@ -324,10 +317,9 @@ module.exports = {
                     }
                     await atividadeEntregaModel.atualizarEntrega(id_entrega, nomeArquivo, null);
                     return res.json({ sucesso: true, mensagem: 'Arquivo reenviado com sucesso!' });
-                } else {
-                    const result = await atividadeEntregaModel.criarEntrega(id_atividade, id_aluno, nomeArquivo, null);
-                    return res.json({ sucesso: true, mensagem: 'Arquivo enviado com sucesso!', id: result.insertId });
                 }
+                const result = await atividadeEntregaModel.criarEntrega(id_atividade, id_aluno, nomeArquivo, null);
+                return res.json({ sucesso: true, mensagem: 'Arquivo enviado com sucesso!', id: result.insertId });
             }
 
             return res.json({ sucesso: false, erro: 'Tipo de entrega inválido.' });
@@ -339,8 +331,8 @@ module.exports = {
 
     async estatisticasAluno(req, res) {
         try {
-            const id_aluno = verificarSessaoAluno(req, res);
-            if (!id_aluno) return res.json({ sucesso: false, erro: 'Aluno não identificado na sessão.' });
+            const id_aluno = sessao.getAluno(req);
+            if (!id_aluno) return res.json({ sucesso: false, erro: 'Aluno não identificado.' });
 
             const stats = await atividadeEntregaModel.estatisticasAluno(id_aluno);
             res.json({ sucesso: true, dados: stats });
