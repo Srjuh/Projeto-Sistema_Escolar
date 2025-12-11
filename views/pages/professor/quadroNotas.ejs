@@ -281,6 +281,8 @@
             let somaMedias = 0;
             let countAlunos = 0;
 
+            tbody.innerHTML = ''; // limpar
+
             alunos.forEach(aluno => {
                 let atividades = aluno.atividades || [];
 
@@ -299,33 +301,14 @@
                     return;
                 }
 
-                const { somaPonderada, somaPesos } = renderizarAtividadesAluno(aluno, atividades);
-                
-                // Calcula média do aluno
-                const mediaAluno = somaPesos > 0 ? (somaPonderada / somaPesos) * 100 : 0;
+                // renderiza linhas das atividades e calcula média "simples" das notas ponderadas
+                const { mediaAluno } = renderizarAtividadesAluno(aluno, atividades);
 
-                // Adiciona dados para PDF
-                dadosNotasCarregados.push({
-                    aluno: '',
-                    atividade: '',
-                    disciplina: '',
-                    data: 'MÉDIA DO ALUNO',
-                    nota: '',
-                    peso: '',
-                    notaPonderada: mediaAluno.toFixed(2)
-                });
-
-                // Linha de média do aluno
-                const trMedia = document.createElement('tr');
-                trMedia.className = 'table-info';
-                trMedia.innerHTML = `
-                    <td colspan="4" class="text-end"><strong>Média do Aluno (ponderada):</strong></td>
-                    <td colspan="3"><strong>${mediaAluno.toFixed(2)}</strong></td>
-                `;
-                tbody.appendChild(trMedia);
-
-                somaMedias += mediaAluno;
-                countAlunos++;
+                // Só inclui aluno na média da turma se tiver média válida
+                if (mediaAluno !== null) {
+                    somaMedias += mediaAluno;
+                    countAlunos++;
+                }
             });
 
             return { somaMedias, countAlunos };
@@ -333,23 +316,27 @@
 
         function renderizarAtividadesAluno(aluno, atividades) {
             const tbody = document.getElementById('corpoTabelaNotas');
-            let somaPonderada = 0;
-            let somaPesos = 0;
+            let somaPonderadas = 0;   // acumula notas ponderadas (nota * peso / 100)
+            let countPonderadas = 0;  // conta apenas atividades com peso > 0 e nota existente
+            const nomeAluno = aluno.nome_aluno || '';
+
+            // Armazena linhas temporárias para poder adicionar o rowspan apenas depois
+            const linhas = [];
 
             atividades.forEach((atividade, index) => {
                 const peso = Number(pesosAtividades[atividade.id_atividade] ?? 0);
-                const nota = atividade.nota !== null ? Number(atividade.nota) : null;
-                const notaPonderada = nota !== null ? (nota * peso) / 100 : null;
+                const nota = (atividade.nota !== null && atividade.nota !== undefined) ? Number(atividade.nota) : null;
+                const notaPonderada = (nota !== null && peso > 0) ? (nota * peso) / 100 : null;
 
-                // Acumula para média
-                if (nota !== null) {
-                    somaPonderada += notaPonderada;
-                    somaPesos += peso;
+                // Somente considera na média se peso > 0 e nota existente (notaPonderada calculada)
+                if (notaPonderada !== null) {
+                    somaPonderadas += notaPonderada;
+                    countPonderadas++;
                 }
 
-                // Dados para PDF
+                // Dados para PDF: notaPonderada exibida como (nota * peso)/100
                 dadosNotasCarregados.push({
-                    aluno: index === 0 ? aluno.nome_aluno : '',
+                    aluno: index === 0 ? nomeAluno : '',
                     atividade: atividade.titulo,
                     disciplina: atividade.disciplina,
                     data: formatarData(atividade.data_entrega),
@@ -365,7 +352,7 @@
                 if (index === 0) {
                     const tdAluno = document.createElement('td');
                     tdAluno.rowSpan = atividades.length + 1;
-                    tdAluno.innerHTML = `<strong>${aluno.nome_aluno}</strong>`;
+                    tdAluno.innerHTML = `<strong>${nomeAluno}</strong>`;
                     tr.appendChild(tdAluno);
                 }
 
@@ -381,10 +368,45 @@
                     <td><strong>${peso}%</strong></td>
                     <td>${notaPonderada !== null ? `<strong>${notaPonderada.toFixed(2)}</strong>` : '-'}</td>
                 `;
-                tbody.appendChild(tr);
+                linhas.push(tr);
             });
 
-            return { somaPonderada, somaPesos };
+            // inserir linhas no tbody
+            linhas.forEach(tr => tbody.appendChild(tr));
+
+            // Calcula "Média do Aluno (ponderada)" conforme pedido:
+            // médiaAluno = (soma das notas ponderadas) / (quantidade de atividades consideradas)
+            let mediaAluno = null;
+            if (countPonderadas > 0) {
+                mediaAluno = somaPonderadas / countPonderadas;
+
+                const trMedia = document.createElement('tr');
+                trMedia.className = 'table-info';
+                trMedia.innerHTML = `
+                    <td colspan="4" class="text-end"><strong>Média do Aluno (ponderada):</strong></td>
+                    <td colspan="3"><strong>${mediaAluno.toFixed(2)}</strong></td>
+                `;
+                tbody.appendChild(trMedia);
+
+                // também adiciona ao PDF
+                dadosNotasCarregados.push({
+                    aluno: '',
+                    atividade: '',
+                    disciplina: '',
+                    data: 'MÉDIA DO ALUNO',
+                    nota: '',
+                    peso: '',
+                    notaPonderada: mediaAluno.toFixed(2)
+                });
+            } else {
+                const trInfo = document.createElement('tr');
+                trInfo.innerHTML = `
+                    <td colspan="7" class="text-muted small">Nenhuma atividade com peso válido para cálculo da média.</td>
+                `;
+                tbody.appendChild(trInfo);
+            }
+
+            return { mediaAluno };
         }
 
         function exibirMediaTurma(somaMedias, countAlunos) {
