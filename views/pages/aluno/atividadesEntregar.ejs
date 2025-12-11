@@ -378,6 +378,8 @@
                     document.getElementById('textoResposta').value = '';
                     document.getElementById('arquivoAtualInfo').style.display = 'none';
 
+                    const btn = document.getElementById('btnEnviarAtividade');
+
                     if (atividadeAtual.id_entrega) {
                         document.getElementById('entregaExistenteInfo').style.display = 'block';
                         document.getElementById('textoBtnEnviar').textContent = 'Reenviar';
@@ -401,6 +403,18 @@
                         document.getElementById('textoBtnEnviar').textContent = 'Enviar';
                     }
 
+                    // VALIDAÇÃO: se já corrigida, bloquear reenvio
+                    if (atividadeAtual.nota !== null && atividadeAtual.nota !== undefined) {
+                        btn.disabled = true;
+                        btn.classList.add('disabled');
+                        document.getElementById('textoBtnEnviar').textContent = 'Corrigida';
+                        document.getElementById('entregaExistenteInfo').style.display = 'block';
+                        document.getElementById('tipoEntregaAtual').textContent = 'Entrega já corrigida — reenvio não permitido.';
+                    } else {
+                        btn.disabled = false;
+                        btn.classList.remove('disabled');
+                    }
+
                     const modal = new bootstrap.Modal(document.getElementById('modalEnviarAtividade'));
                     modal.show();
                 } else {
@@ -420,6 +434,12 @@
             const textoOriginal = btnSpan.textContent;
             
             try {
+                // Bloqueio extra: não enviar se atividade já corrigida
+                if (atividadeAtual && (atividadeAtual.nota !== null && atividadeAtual.nota !== undefined)) {
+                    alert('Esta atividade já foi corrigida e não pode ser reenviada.');
+                    return;
+                }
+
                 const formData = new FormData(document.getElementById('formEnviarAtividade'));
                 const tipoEntrega = document.querySelector('input[name="tipoEntrega"]:checked').value;
                 
