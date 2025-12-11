@@ -26,13 +26,17 @@ module.exports = {
     },
 
     // Renderizar página de atividades
-    atividades(req, res) {
-        // Verifica a sessão do professor
-        const id_professor = sessao.getProfessor(req);
-            if (!id_professor) {
-                return res.redirect('/login');
-            } 
-    
-        return res.render('pages/professor/atividades');
+    async atividades(req, res) {
+        try {
+            const id_professor = sessao.getProfessor(req);
+            if (!id_professor) return res.redirect('/login');
+
+            // busca turmas/disciplina para popular selects no render inicial
+            const turmas = await turmaModel.listarTurmasDisciplinasPorProfessor(id_professor).catch(() => []);
+            return res.render('pages/professor/atividades', { turmas });
+        } catch (err) {
+            console.error('Erro ao renderizar atividades (controller):', err);
+            return res.render('pages/professor/atividades', { turmas: [] });
+        }
     }
 };
