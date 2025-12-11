@@ -9,24 +9,6 @@ class Database {
             return instance; // <--- impede múltiplos pools
         }
 
-        // Localhost para testes
-        this.pool = mysql.createPool({
-            host: 'localhost',
-            port: 3306,
-            user: 'root',
-            password: 'abc123',
-            database: 'sistema_academico',
-            waitForConnections: true,
-            connectionLimit: 10,
-            maxIdle: 10,
-            idleTimeout: 60000,
-            queueLimit: 0,
-            enableKeepAlive: true,
-            keepAliveInitialDelay: 0,
-            connectTimeout: 60000,
-        });
-
-/*
         this.pool = mysql.createPool({
             host: process.env.DB_HOST,
             port: process.env.DB_PORT,
@@ -42,7 +24,7 @@ class Database {
             keepAliveInitialDelay: 0,
             connectTimeout: 60000,
         });
-*/
+
         console.log('🔌 Pool de conexões MySQL criado (Railway)');
 
         this.testarConexao();
