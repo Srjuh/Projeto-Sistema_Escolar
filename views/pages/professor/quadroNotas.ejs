@@ -375,15 +375,16 @@
             linhas.forEach(tr => tbody.appendChild(tr));
 
             // Calcula "Média do Aluno (ponderada)" conforme pedido:
-            // médiaAluno = (soma das notas ponderadas) / (quantidade de atividades consideradas)
+            // agora é SOMA das notas ponderadas (não dividir pela quantidade)
             let mediaAluno = null;
             if (countPonderadas > 0) {
-                mediaAluno = somaPonderadas / countPonderadas;
+                // antes: mediaAluno = somaPonderadas / countPonderadas;
+                mediaAluno = somaPonderadas; // soma de todas as notas ponderadas do aluno
 
                 const trMedia = document.createElement('tr');
                 trMedia.className = 'table-info';
                 trMedia.innerHTML = `
-                    <td colspan="4" class="text-end"><strong>Média do Aluno (ponderada):</strong></td>
+                    <td colspan="4" class="text-end"><strong>Média do Aluno:</strong></td>
                     <td colspan="3"><strong>${mediaAluno.toFixed(2)}</strong></td>
                 `;
                 tbody.appendChild(trMedia);
@@ -414,7 +415,7 @@
             
             if (countAlunos > 0) {
                 const mediaTurma = somaMedias / countAlunos;
-                el.textContent = `Média da Turma (ponderada): ${mediaTurma.toFixed(2)}`;
+                el.textContent = `Média da Turma: ${mediaTurma.toFixed(2)}`;
                 el.style.display = 'inline-block';
             } else {
                 el.style.display = 'none';
