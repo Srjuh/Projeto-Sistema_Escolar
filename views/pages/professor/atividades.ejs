@@ -136,30 +136,48 @@
 
         async function carregarTurmasEDisciplinas() {
             try {
-                //URL atualizada
                 const response = await fetch('/professor/api/atividades/turmas-disciplinas');
                 const data = await response.json();
 
-                if (data.sucesso && data.turmas?.length > 0) {
-                    todasTurmasDisciplinas = data.turmas;
+                // DEBUG: inspecione estrutura retornada
+                console.log('turmas-disciplinas:', data);
+
+                // Aceita ambos os formatos: data.turmas ou data.dados
+                const turmasRaw = data.turmas || data.dados || [];
+
+                if (data.sucesso && turmasRaw.length > 0) {
+                    // normaliza nomes de campos sem misturar ?? e ||
+                    todasTurmasDisciplinas = turmasRaw.map(function(item) {
+                        return {
+                            id_turma: item.id_turma || item.idTurma || item.id || null,
+                            nome_turma: item.nome_turma || item.nome || item.nomeTurma || item.nome_turma_text || ('Turma ' + (item.id_turma || item.idTurma || item.id || '')),
+                            id_disciplina: item.id_disciplina || item.idDisciplina || item.id_disciplina || null,
+                            nome_disciplina: item.nome_disciplina || item.nomeDisciplina || item.nome || ''
+                        };
+                    });
                     popularTurmas();
                 } else {
                     document.getElementById('turma').innerHTML = '<option disabled>Nenhuma turma encontrada</option>';
                     document.getElementById('disciplina').innerHTML = '<option disabled>Nenhuma disciplina encontrada</option>';
+                    todasTurmasDisciplinas = [];
                 }
             } catch (error) {
                 console.error('Erro ao carregar turmas e disciplinas:', error);
+                document.getElementById('turma').innerHTML = '<option disabled>Erro ao carregar</option>';
+                document.getElementById('disciplina').innerHTML = '<option disabled>Erro ao carregar</option>';
+                todasTurmasDisciplinas = [];
             }
         }
 
         function popularTurmas() {
             const turmaSelect = document.getElementById('turma');
-            
+
             // Extrair turmas únicas
             const turmasMap = new Map();
             todasTurmasDisciplinas.forEach(item => {
+                if (!item.id_turma) return;
                 if (!turmasMap.has(item.id_turma)) {
-                    turmasMap.set(item.id_turma, item.nome_turma);
+                    turmasMap.set(item.id_turma, item.nome_turma || ('Turma ' + item.id_turma));
                 }
             });
 

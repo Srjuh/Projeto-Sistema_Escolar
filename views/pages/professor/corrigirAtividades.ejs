@@ -147,7 +147,7 @@
 
     <script>
         let atividadeAtualId = null;
-        let todasTurmas = <%= JSON.stringify(turmas || []) %>;
+        let todasTurmas = <%- JSON.stringify(turmas || []) %>;
         let modalCorrigir = null;
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -181,22 +181,41 @@
 
         async function carregarAtividades() {
             const container = document.getElementById('listaAtividades');
-            container.innerHTML = '<div class="text-center py-4"><i class="fa fa-spinner fa-spin fa-2x"></i><p class="mt-2">Carregando...</p></div>';
-
-            const idTurma = document.getElementById('filtroTurma').value;
-            const idDisciplina = document.getElementById('filtroDisciplina').value;
-
-            let url = '/professor/api/corrigir/atividades';
-            const params = [];
-            if (idTurma) params.push(`id_turma=${idTurma}`);
-            if (idDisciplina) params.push(`id_disciplina=${idDisciplina}`);
-            if (params.length > 0) url += '?' + params.join('&');
-
             try {
-                const response = await fetch(url);
-                const data = await response.json();
+                container.innerHTML = '<div class="text-center py-4"><i class="fa fa-spinner fa-spin fa-2x"></i><p class="mt-2">Carregando...</p></div>';
 
-                if (data.sucesso && data.dados?.length > 0) {
+                const idTurma = document.getElementById('filtroTurma').value;
+                const idDisciplina = document.getElementById('filtroDisciplina').value;
+
+                let url = '/professor/api/corrigir/atividades';
+                const params = [];
+                if (idTurma) params.push(`id_turma=${encodeURIComponent(idTurma)}`);
+                if (idDisciplina) params.push(`id_disciplina=${encodeURIComponent(idDisciplina)}`);
+                if (params.length > 0) url += '?' + params.join('&');
+
+                console.log('carregarAtividades -> fetching', url);
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    console.error('carregarAtividades -> response not ok', response.status, response.statusText);
+                    container.innerHTML = `<div class="alert alert-danger mb-0">Erro ao carregar atividades (status ${response.status}).</div>`;
+                    return;
+                }
+
+                let data;
+                try {
+                    data = await response.json();
+                } catch (errJson) {
+                    console.error('carregarAtividades -> invalid JSON:', errJson);
+                    const text = await response.text();
+                    console.error('carregarAtividades -> response text:', text.slice(0, 200));
+                    container.innerHTML = '<div class="alert alert-danger mb-0">Resposta inválida do servidor.</div>';
+                    return;
+                }
+
+                console.log('carregarAtividades -> response json', data);
+
+                if (data.sucesso && data.dados && data.dados.length > 0) {
                     renderizarAtividades(data.dados);
                 } else {
                     container.innerHTML = '<div class="alert alert-info mb-0"><i class="fa fa-info-circle me-2"></i>Nenhuma atividade com entregas encontrada.</div>';
@@ -208,38 +227,41 @@
         }
 
         function renderizarAtividades(atividades) {
-            const container = document.getElementById('listaAtividades');
-            
-            let html = '<div class="list-group">';
-            atividades.forEach(atividade => {
-                const dataEntrega = new Date(atividade.data_entrega).toLocaleDateString('pt-BR');
-                const todasCorrigidas = atividade.pendentes_correcao == 0;
+            try {
+                const container = document.getElementById('listaAtividades');
+                let html = '<div class="list-group">';
+                atividades.forEach(atividade => {
+                    const dataEntrega = atividade.data_entrega ? new Date(atividade.data_entrega).toLocaleDateString('pt-BR') : 'N/D';
+                    const todasCorrigidas = Number(atividade.pendentes_correcao) === 0;
 
-                html += `
-                    <a href="#" class="list-group-item list-group-item-action" 
-                       onclick="carregarEntregas(${atividade.id_atividade}, '${atividade.titulo.replace(/'/g, "\\'")}'); return false;">
-                        <div class="d-flex w-100 justify-content-between align-items-center">
-                            <div>
-                                <h5 class="mb-1">${atividade.titulo}</h5>
-                                <p class="mb-1 text-muted">
-                                    <i class="fa fa-book me-1"></i>${atividade.disciplina} - 
-                                    <i class="fa fa-users me-1"></i>${atividade.turma} -
-                                    <i class="fa fa-calendar me-1"></i>Entrega: ${dataEntrega}
-                                </p>
+                    html += `
+                        <a href="#" class="list-group-item list-group-item-action" 
+                           onclick="carregarEntregas(${atividade.id_atividade}, '${(atividade.titulo || '').replace(/'/g, "\\'")}'); return false;">
+                            <div class="d-flex w-100 justify-content-between align-items-center">
+                                <div>
+                                    <h5 class="mb-1">${atividade.titulo || ''}</h5>
+                                    <p class="mb-1 text-muted">
+                                        <i class="fa fa-book me-1"></i>${atividade.disciplina || ''} - 
+                                        <i class="fa fa-users me-1"></i>${atividade.turma || ''} -
+                                        <i class="fa fa-calendar me-1"></i>Entrega: ${dataEntrega}
+                                    </p>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-info">${atividade.total_entregas || 0} entregas</span>
+                                    ${todasCorrigidas 
+                                        ? '<span class="badge bg-success">Todas corrigidas</span>'
+                                        : `<span class="badge bg-warning text-dark">${atividade.pendentes_correcao || 0} pendentes</span>`}
+                                </div>
                             </div>
-                            <div class="text-end">
-                                <span class="badge bg-info">${atividade.total_entregas} entregas</span>
-                                ${todasCorrigidas 
-                                    ? '<span class="badge bg-success">Todas corrigidas</span>'
-                                    : `<span class="badge bg-warning text-dark">${atividade.pendentes_correcao} pendentes</span>`}
-                            </div>
-                        </div>
-                    </a>
-                `;
-            });
-            html += '</div>';
-            
-            container.innerHTML = html;
+                        </a>
+                    `;
+                });
+                html += '</div>';
+                container.innerHTML = html;
+            } catch (err) {
+                console.error('renderizarAtividades erro:', err);
+                document.getElementById('listaAtividades').innerHTML = '<div class="alert alert-danger">Erro ao renderizar atividades.</div>';
+            }
         }
 
         async function carregarEntregas(id_atividade, titulo) {
@@ -248,18 +270,23 @@
             document.getElementById('areaEntregas').style.display = 'block';
             
             const tbody = document.getElementById('corpoTabelaEntregas');
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center"><i class="fa fa-spinner fa-spin"></i> Carregando...</td></tr>';
-
             try {
-                // ✅ URL atualizada
-                const response = await fetch(`/professor/api/corrigir/entregas/${id_atividade}`);
-                const data = await response.json();
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center"><i class="fa fa-spinner fa-spin"></i> Carregando...</td></tr>';
 
+                const response = await fetch(`/professor/api/corrigir/entregas/${encodeURIComponent(id_atividade)}`);
+
+                if (!response.ok) {
+                    console.error('carregarEntregas -> response not ok', response.status);
+                    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">Erro ao carregar entregas (status ${response.status}).</td></tr>`;
+                    return;
+                }
+
+                const data = await response.json();
                 if (data.sucesso && data.dados) {
                     exibirEstatisticas(data.dados);
                     renderizarEntregas(data.dados);
                 } else {
-                    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">Erro: ${data.erro}</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">Erro: ${data.erro || 'Nenhuma entrega encontrada'}</td></tr>`;
                 }
             } catch (error) {
                 console.error('Erro ao carregar entregas:', error);
@@ -317,50 +344,55 @@
         }
 
         function renderizarEntregas(entregas) {
-            const tbody = document.getElementById('corpoTabelaEntregas');
-            tbody.innerHTML = '';
+            try {
+                const tbody = document.getElementById('corpoTabelaEntregas');
+                tbody.innerHTML = '';
 
-            if (entregas.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Nenhuma entrega encontrada</td></tr>';
-                return;
+                if (!Array.isArray(entregas) || entregas.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Nenhuma entrega encontrada</td></tr>';
+                    return;
+                }
+
+                entregas.forEach(entrega => {
+                    const corrigida = entrega.nota !== null && entrega.nota !== undefined;
+                    const dataEnvio = entrega.data_envio ? new Date(entrega.data_envio).toLocaleString('pt-BR') : '-';
+                    
+                    const tipoEntrega = entrega.arquivo 
+                        ? `<a href="/uploads/${entrega.arquivo}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fa fa-download me-1"></i>Arquivo</a>`
+                        : (entrega.texto ? `<span class="badge bg-secondary">Texto</span>` : '<span class="text-muted">Sem conteúdo</span>');
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${entrega.nome_aluno || ''}</td>
+                        <td>${dataEnvio}</td>
+                        <td>${tipoEntrega}</td>
+                        <td>
+                            <span class="badge ${corrigida ? 'bg-success' : 'bg-secondary'}">
+                                ${corrigida ? parseFloat(entrega.nota).toFixed(1) : 'N/A'}
+                            </span>
+                        </td>
+                        <td>
+                            ${corrigida 
+                                ? '<span class="badge bg-success"><i class="fa fa-check me-1"></i>Corrigida</span>'
+                                : '<span class="badge bg-warning text-dark"><i class="fa fa-clock me-1"></i>Pendente</span>'}
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-primary" onclick="abrirModalCorrecao(${entrega.id_entrega})">
+                                <i class="fa fa-edit me-1"></i>${corrigida ? 'Rever' : 'Corrigir'}
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (err) {
+                console.error('renderizarEntregas erro:', err);
+                document.getElementById('corpoTabelaEntregas').innerHTML = '<tr><td colspan="6" class="text-center text-danger">Erro ao renderizar entregas</td></tr>';
             }
-
-            entregas.forEach(entrega => {
-                const corrigida = entrega.nota !== null;
-                const dataEnvio = new Date(entrega.data_envio).toLocaleString('pt-BR');
-                
-                const tipoEntrega = entrega.arquivo 
-                    ? `<a href="/uploads/${entrega.arquivo}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fa fa-download me-1"></i>Arquivo</a>`
-                    : '<span class="badge bg-secondary">Texto</span>';
-
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${entrega.nome_aluno}</td>
-                    <td>${dataEnvio}</td>
-                    <td>${tipoEntrega}</td>
-                    <td>
-                        <span class="badge ${corrigida ? 'bg-success' : 'bg-secondary'}">
-                            ${corrigida ? parseFloat(entrega.nota).toFixed(1) : 'N/A'}
-                        </span>
-                    </td>
-                    <td>
-                        ${corrigida 
-                            ? '<span class="badge bg-success"><i class="fa fa-check me-1"></i>Corrigida</span>'
-                            : '<span class="badge bg-warning text-dark"><i class="fa fa-clock me-1"></i>Pendente</span>'}
-                    </td>
-                    <td>
-                        <button class="btn btn-sm btn-primary" onclick="abrirModalCorrecao(${entrega.id_entrega})">
-                            <i class="fa fa-edit me-1"></i>${corrigida ? 'Rever' : 'Corrigir'}
-                        </button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
         }
 
         async function abrirModalCorrecao(id_entrega) {
             try {
-                // ✅ URL atualizada
+                // URL atualizada
                 const response = await fetch(`/professor/api/corrigir/entrega/${id_entrega}`);
                 const data = await response.json();
 
@@ -412,7 +444,7 @@
                 btn.disabled = true;
                 btn.innerHTML = '<i class="fa fa-spinner fa-spin me-2"></i>Salvando...';
 
-                // ✅ URL atualizada
+                // URL atualizada
                 const response = await fetch(`/professor/api/corrigir/entrega/${id_entrega}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
