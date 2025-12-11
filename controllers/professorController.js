@@ -12,7 +12,7 @@ module.exports = {
             // Verifica a sessão do professor
             const id_professor = sessao.getProfessor(req);
                 if (!id_professor) {
-                    return res.render('pages/professor/professorHome', { turmas: [] });
+                    return res.redirect('/login');
                 }
 
             // Busca turmas com disciplinas do professor
@@ -27,6 +27,12 @@ module.exports = {
 
     // Renderizar página de atividades
     atividades(req, res) {
-        res.render('pages/professor/atividades');
+        // Verifica a sessão do professor
+        const id_professor = sessao.getProfessor(req);
+            if (!id_professor) {
+                return res.redirect('/login');
+            } 
+    
+        return res.render('pages/professor/atividades');
     }
 };

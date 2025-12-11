@@ -6,7 +6,7 @@ const quadroNotasController = require('../controllers/quadroNotasController');
 
 // ===== Páginas =====
 router.get('/', professorController.home);
-router.get('/atividades', (req, res) => res.render('pages/professor/atividades'));
+router.get('/atividades', professorController.atividades);
 router.get('/corrigir-atividades', atividadeController.renderCorrigirAtividades);
 router.get('/quadro-notas', quadroNotasController.renderQuadroNotas);
 
