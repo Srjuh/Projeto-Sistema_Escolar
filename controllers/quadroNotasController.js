@@ -20,13 +20,16 @@ module.exports = {
     // Listar notas por turma/disciplina (Professor)
     async listarNotas(req, res) {
         try {
-            const id_professor = Sessao.getProfessor(req);
+            const id_professor = sessao.getProfessor(req); // corrigido: sessao (minúsculo)
             if (!id_professor) return res.json({ sucesso: false, erro: 'Professor não identificado.' });
 
             const { id_turma, id_disciplina } = req.query;
             if (!id_turma) return res.json({ sucesso: false, erro: 'Turma não informada.' });
 
-            const notas = await quadroNotasModel.listarNotasPorTurma(id_turma, id_disciplina || null, id_professor);
+            const idTurmaNum = parseInt(id_turma, 10);
+            if (isNaN(idTurmaNum)) return res.json({ sucesso: false, erro: 'Turma inválida.' });
+
+            const notas = await quadroNotasModel.listarNotasPorTurma(idTurmaNum, id_disciplina || null, id_professor);
 
             // Agrupa por aluno
             const alunosMap = {};
