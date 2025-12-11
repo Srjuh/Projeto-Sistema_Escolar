@@ -315,24 +315,39 @@
 
             let html = '<div class="list-group">';
             
-            atividadesFiltradas.forEach(atividade => {
+            atividadesFiltradas.forEach(function(atividade) {
                 const badgeClass = {
                     'entregue': 'bg-success',
                     'pendente': 'bg-warning text-dark',
                     'atrasada': 'bg-danger'
-                }[atividade.status.toLowerCase()] || 'bg-secondary';
+                }[(atividade.status || '').toLowerCase()] || 'bg-secondary';
 
-                const dataEntrega = new Date(atividade.data_entrega).toLocaleDateString('pt-BR');
-                const temNota = atividade.nota !== null;
+                const dataEntrega = atividade.data_entrega ? new Date(atividade.data_entrega).toLocaleDateString('pt-BR') : 'N/D';
+                const temNota = atividade.nota !== null && atividade.nota !== undefined;
+                const isAtrasada = (atividade.status || '').toLowerCase() === 'atrasada';
+
+                // botão: desabilitado se atrasada, caso contrário abre modal
+                let botaoHtml = '';
+                if (isAtrasada) {
+                    botaoHtml = `<button class="btn btn-sm btn-secondary" disabled title="Prazo de entrega expirado">
+                                    <i class="fa fa-ban me-1"></i>Prazo expirado
+                                 </button>`;
+                } else {
+                    const icon = atividade.id_entrega ? 'edit' : 'upload';
+                    const textoBtn = atividade.id_entrega ? 'Reenviar' : 'Entregar';
+                    botaoHtml = `<button class="btn btn-sm btn-primary" onclick="abrirModalEntrega(${atividade.id_atividade})">
+                                    <i class="fa fa-${icon} me-1"></i>${textoBtn}
+                                 </button>`;
+                }
 
                 html += `
                     <div class="list-group-item">
                         <div class="d-flex w-100 justify-content-between align-items-start">
                             <div class="flex-grow-1">
-                                <h5 class="mb-1">${atividade.titulo}</h5>
+                                <h5 class="mb-1">${atividade.titulo || ''}</h5>
                                 <p class="mb-1 text-muted">
-                                    <i class="fa fa-book me-1"></i>${atividade.disciplina} - 
-                                    <i class="fa fa-users me-1"></i>${atividade.turma} -
+                                    <i class="fa fa-book me-1"></i>${atividade.disciplina || ''} - 
+                                    <i class="fa fa-users me-1"></i>${atividade.turma || ''} -
                                     <i class="fa fa-calendar me-1"></i>Entrega: ${dataEntrega}
                                 </p>
                                 ${atividade.descricao ? `<p class="mb-1 small">${atividade.descricao}</p>` : ''}
@@ -341,9 +356,7 @@
                             </div>
                             <div class="text-end ms-3">
                                 <span class="badge ${badgeClass} mb-2">${atividade.status}</span><br>
-                                <button class="btn btn-sm btn-primary" onclick="abrirModalEntrega(${atividade.id_atividade})">
-                                    <i class="fa fa-${atividade.id_entrega ? 'edit' : 'upload'} me-1"></i>${atividade.id_entrega ? 'Reenviar' : 'Entregar'}
-                                </button>
+                                ${botaoHtml}
                             </div>
                         </div>
                     </div>
@@ -404,12 +417,21 @@
                     }
 
                     // VALIDAÇÃO: se já corrigida, bloquear reenvio
-                    if (atividadeAtual.nota !== null && atividadeAtual.nota !== undefined) {
+                    const corrigida = atividadeAtual.nota !== null && atividadeAtual.nota !== undefined;
+                    const atrasada = (atividadeAtual.status || '').toLowerCase() === 'atrasada';
+
+                    if (corrigida) {
                         btn.disabled = true;
                         btn.classList.add('disabled');
                         document.getElementById('textoBtnEnviar').textContent = 'Corrigida';
                         document.getElementById('entregaExistenteInfo').style.display = 'block';
                         document.getElementById('tipoEntregaAtual').textContent = 'Entrega já corrigida — reenvio não permitido.';
+                    } else if (atrasada) {
+                        btn.disabled = true;
+                        btn.classList.add('disabled');
+                        document.getElementById('textoBtnEnviar').textContent = 'Prazo expirado';
+                        document.getElementById('entregaExistenteInfo').style.display = 'block';
+                        document.getElementById('tipoEntregaAtual').textContent = 'Prazo de entrega expirado — envio não permitido.';
                     } else {
                         btn.disabled = false;
                         btn.classList.remove('disabled');
@@ -434,9 +456,9 @@
             const textoOriginal = btnSpan.textContent;
             
             try {
-                // Bloqueio extra: não enviar se atividade já corrigida
-                if (atividadeAtual && (atividadeAtual.nota !== null && atividadeAtual.nota !== undefined)) {
-                    alert('Esta atividade já foi corrigida e não pode ser reenviada.');
+                // Bloqueio extra: não enviar se atividade já corrigida ou atrasada
+                if (atividadeAtual && ((atividadeAtual.nota !== null && atividadeAtual.nota !== undefined) || (atividadeAtual.status || '').toLowerCase() === 'atrasada')) {
+                    alert('Esta atividade não pode ser enviada (corrigida ou prazo expirado).');
                     return;
                 }
 

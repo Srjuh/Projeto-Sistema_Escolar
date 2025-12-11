@@ -121,28 +121,38 @@
 
         async function carregarEstatisticas() {
             try {
-                // ✅ URL atualizada para nova rota unificada
+                // URL atualizada para nova rota unificada
                 const response = await fetch('/aluno/api/estatisticas');
                 const data = await response.json();
 
                 if (data.sucesso && data.dados) {
                     const stats = data.dados;
-                    
-                    document.getElementById('statTotalAtividades').textContent = stats.total_atividades || 0;
-                    document.getElementById('statEntregues').textContent = stats.total_entregues || 0;
-                    document.getElementById('statPendentes').textContent = stats.pendentes || 0;
-                    
-                    const mediaGeral = stats.media_geral 
-                        ? parseFloat(stats.media_geral).toFixed(1)
+
+                    // Normalizar nomes retornados pelo backend
+                    const totalAtividades = Number(stats.total_atividades || stats.totalActivities || 0);
+                    const totalEntregues = Number(stats.total_entregues || stats.total_entregas || stats.totalEntregues || 0);
+                    const totalCorrigidas = Number(stats.total_corrigidas || stats.total_corrigidas || 0);
+                    const mediaNotas = stats.media_notas ?? stats.media_notas ?? stats.media_geral ?? null;
+                    const totalAtrasadas = Number(stats.total_atrasadas || stats.totalAtrasadas || 0);
+
+                    // Calcular pendentes = totalAtividades - totalEntregues
+                    const pendentes = Math.max(0, totalAtividades - totalEntregues);
+
+                    document.getElementById('statTotalAtividades').textContent = totalAtividades;
+                    document.getElementById('statEntregues').textContent = totalEntregues;
+                    document.getElementById('statPendentes').textContent = pendentes;
+
+                    const mediaGeral = (mediaNotas !== null && mediaNotas !== undefined && !isNaN(mediaNotas))
+                        ? parseFloat(mediaNotas).toFixed(1)
                         : '-';
                     document.getElementById('statMediaGeral').textContent = mediaGeral;
-                    
-                    document.getElementById('badgePendentes').innerHTML = 
-                        `<i class="fa fa-clock me-1"></i>${stats.pendentes || 0} pendentes`;
-                    document.getElementById('badgeMedia').innerHTML = 
+
+                    document.getElementById('badgePendentes').innerHTML =
+                        `<i class="fa fa-clock me-1"></i>${pendentes} pendentes`;
+                    document.getElementById('badgeMedia').innerHTML =
                         `<i class="fa fa-star me-1"></i>Média: ${mediaGeral}`;
-                    
-                    document.getElementById('totalAtividades').textContent = stats.total_atividades || 0;
+
+                    document.getElementById('totalAtividades').textContent = totalAtividades;
                 }
 
                 await carregarInfoTurma();
@@ -153,11 +163,12 @@
 
         async function carregarInfoTurma() {
             try {
-                // ✅ URL atualizada para nova rota unificada
+                // URL atualizada para nova rota unificada
                 const response = await fetch('/aluno/api/atividades');
                 const data = await response.json();
 
                 if (data.sucesso && data.dados && data.dados.length > 0) {
+                    // pega a primeira atividade para inferir a turma do aluno
                     const turma = data.dados[0].turma;
                     document.getElementById('turmaNome').textContent = turma || 'Não matriculado';
                 } else {
